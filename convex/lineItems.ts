@@ -74,6 +74,23 @@ export const update = mutation({
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined)
     );
+    // We need to delete claims when the owner reduces quantity (e.g. 3 → 2)
+    // because units beyond the new quantity no longer exist (e.g. unitIndex 2).
+    const isQuantityReduced =
+      args.quantity !== undefined && args.quantity < item.quantity;
+    if (isQuantityReduced) {
+      const newQuantity = args.quantity!;
+      const allClaims = await ctx.db
+        .query("claims")
+        .withIndex("by_lineItem", (q) => q.eq("lineItemId", id))
+        .collect();
+      const claimsToDelete = allClaims.filter(
+        (claim) => claim.unitIndex >= newQuantity
+      );
+      for (const claimToDelete of claimsToDelete) {
+        await ctx.db.delete(claimToDelete._id);
+      }
+    }
     await ctx.db.patch(id, filtered);
   },
 });

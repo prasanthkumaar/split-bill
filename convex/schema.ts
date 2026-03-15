@@ -36,9 +36,10 @@ export default defineSchema({
     billId: v.id("bills"),
     friendId: v.id("friends"),
     lineItemId: v.id("lineItems"),
+    unitIndex: v.number(),
   })
     .index("by_bill", ["billId"])
     .index("by_friend", ["friendId"])
     .index("by_lineItem", ["lineItemId"])
-    .index("by_friend_and_item", ["friendId", "lineItemId"]),
+    .index("by_friend_item_unit", ["friendId", "lineItemId", "unitIndex"]),
 });

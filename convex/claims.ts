@@ -16,12 +16,16 @@ export const toggle = mutation({
     billId: v.id("bills"),
     friendId: v.id("friends"),
     lineItemId: v.id("lineItems"),
+    unitIndex: v.number(),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("claims")
-      .withIndex("by_friend_and_item", (q) =>
-        q.eq("friendId", args.friendId).eq("lineItemId", args.lineItemId)
+      .withIndex("by_friend_item_unit", (q) =>
+        q
+          .eq("friendId", args.friendId)
+          .eq("lineItemId", args.lineItemId)
+          .eq("unitIndex", args.unitIndex)
       )
       .unique();
 
@@ -33,6 +37,7 @@ export const toggle = mutation({
         billId: args.billId,
         friendId: args.friendId,
         lineItemId: args.lineItemId,
+        unitIndex: args.unitIndex,
       });
     }
   },
