@@ -25,7 +25,7 @@ export const add = mutation({
   },
 });
 
-export const addBatch = mutation({
+export const replaceAll = mutation({
   args: {
     billId: v.id("bills"),
     items: v.array(
@@ -38,6 +38,18 @@ export const addBatch = mutation({
   },
   handler: async (ctx, args) => {
     await assertBillOwner(ctx, args.billId);
+    const existing = await ctx.db
+        .query("lineItems")
+        .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+        .collect();
+      for (const item of existing) {
+        const claims = await ctx.db
+          .query("claims")
+          .withIndex("by_lineItem", (q) => q.eq("lineItemId", item._id))
+          .collect();
+        for (const c of claims) await ctx.db.delete(c._id);
+        await ctx.db.delete(item._id);
+    }
     for (const item of args.items) {
       await ctx.db.insert("lineItems", {
         billId: args.billId,
