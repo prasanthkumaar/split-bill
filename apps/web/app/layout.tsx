@@ -1,20 +1,25 @@
-import { Geist, Geist_Mono, Inter } from "next/font/google"
+import { Inter, Geist_Mono } from "next/font/google";
 
-import "@workspace/ui/globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import "@workspace/ui/globals.css";
+import { ThemeProvider } from "@/providers/theme-provider";
 import { cn } from "@workspace/ui/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
-})
+});
+
+export const metadata = {
+  title: "Split Bill",
+  description: "Split bills with friends",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html
@@ -26,5 +31,5 @@ export default function RootLayout({
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
