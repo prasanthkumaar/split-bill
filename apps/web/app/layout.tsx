@@ -2,6 +2,8 @@ import { Inter, Geist_Mono } from "next/font/google";
 
 import "@workspace/ui/globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { ConvexClerkProvider } from "@/providers/convex-clerk-provider";
+import { QueryProvider } from "@/providers/query-provider";
 import { cn } from "@workspace/ui/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -28,7 +30,11 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ConvexClerkProvider>
+            <QueryProvider>{children}</QueryProvider>
+          </ConvexClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
