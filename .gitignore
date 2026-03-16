@@ -14,6 +14,10 @@ node_modules
 
 # Testing
 coverage
+test-results/
+e2e/*.png
+e2e/*.jpg
+e2e/*.jpeg
 
 # Turbo
 .turbo
@@ -30,6 +34,9 @@ dist
 
 # Debug
 npm-debug.log*
+
+# Convex
+**/convex/_generated/
 
 # Misc
 .DS_Store

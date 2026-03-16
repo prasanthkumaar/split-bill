@@ -7,9 +7,11 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "test:e2e": "npx playwright test --config e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "prettier": "^3.8.1",
@@ -17,11 +19,18 @@
     "turbo": "^2.8.8",
     "typescript": "5.9.3"
   },
+  "packageManager": "npm@10.8.0",
   "engines": {
     "node": ">=20"
   },
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.58",
+    "@clerk/nextjs": "^7.0.4",
+    "ai": "^6.0.116",
+    "convex": "^1.33.1"
+  }
 }
