@@ -1,0 +1,423 @@
+import { test, expect, type Page } from "@playwright/test";
+
+// Clerk test credentials (dev mode only)
+const TEST_EMAIL = "test+clerk_test@example.com";
+const TEST_OTP = "424242";
+
+// Known test data for deterministic assertions
+const ITEMS = [
+  { name: "Margherita Pizza", qty: 1, price: 24.0 },
+  { name: "Truffle Fries", qty: 2, price: 12.0 },
+  { name: "Craft Beer", qty: 3, price: 15.0 },
+];
+const TAX = 10.0;
+const SERVICE_CHARGE = 8.5;
+const SUBTOTAL = 24.0 + 24.0 + 45.0; // 93.00
+const TOTAL = SUBTOTAL + TAX + SERVICE_CHARGE; // 111.50
+const FRIENDS = ["Alice", "Bob"];
+
+// ── Helpers ──
+
+async function login(page: Page) {
+  await page.goto("/");
+  // Wait for Clerk sign-in form
+  await page.waitForURL(/sign-in/, { timeout: 10_000 });
+  await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  // Wait for OTP input to be ready (Clerk needs to initiate the verification)
+  await page.getByRole("textbox", { name: "Enter verification code" }).waitFor({ timeout: 10_000 });
+  // Small delay to let Clerk fully initialise the OTP flow
+  await page.waitForTimeout(500);
+  // Clerk OTP input needs pressSequentially (individual keystrokes) to trigger verification
+  await page
+    .getByRole("textbox", { name: "Enter verification code" })
+    .pressSequentially(TEST_OTP);
+  // Clerk auto-submits OTP, wait for redirect to dashboard
+  await expect(page.getByRole("heading", { name: "Split Bill" })).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+async function createBill(page: Page, name: string) {
+  await page.getByPlaceholder("e.g. Dinner at Burnt Ends").fill(name);
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByRole("heading", { name })).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
+async function addItem(
+  page: Page,
+  name: string,
+  qty: number,
+  price: number
+) {
+  await page.getByPlaceholder("Item name").fill(name);
+  if (qty !== 1) {
+    await page.getByPlaceholder("Qty").fill(String(qty));
+  }
+  await page.getByPlaceholder("Price").fill(price.toFixed(2));
+  await page.getByPlaceholder("Price").press("Enter");
+  // Wait for the item to appear and form to clear before adding next item
+  await expect(page.locator(`input[value="${name}"]`)).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByPlaceholder("Item name")).toHaveValue("", { timeout: 5_000 });
+}
+
+async function addFriend(page: Page, name: string) {
+  await page.getByPlaceholder("Friend's name").fill(name);
+  await page.getByPlaceholder("Friend's name").press("Enter");
+  await expect(page.getByText(name)).toBeVisible();
+  await expect(page.getByPlaceholder("Friend's name")).toHaveValue("", { timeout: 5_000 });
+}
+
+// ── Tests ──
+
+test.describe.serial("Bill splitting flows", () => {
+  let billShareUrl: string;
+
+  test("1. Log in with Clerk test credentials", async ({ page }) => {
+    await login(page);
+  });
+
+  test("2. Create a new bill", async ({ page }) => {
+    await login(page);
+    await createBill(page, "E2E Test Bill");
+    // Should be on the bill edit page
+    await expect(page.getByText("editing")).toBeVisible();
+  });
+
+  test("3-7. Add items, edit, delete, set tax/svc, verify totals", async ({
+    page,
+  }) => {
+    await login(page);
+    await createBill(page, "Totals Test");
+
+    // 3. Add items
+    for (const item of ITEMS) {
+      await addItem(page, item.name, item.qty, item.price);
+    }
+
+    // 4. Edit an item price (change Margherita Pizza from 24 to 26)
+    const pizzaPrice = page.locator('input[value="24.00"]').first();
+    await pizzaPrice.fill("26.00");
+    await pizzaPrice.press("Tab");
+    await expect(page.locator('[class*="flex justify-between"]').filter({ hasText: "Subtotal" }).locator("span").last()).toContainText("$95.00", { timeout: 5_000 });
+
+    // Revert to original for rest of test
+    const pizzaPriceReverted = page.locator('input[value="26.00"]').first();
+    await pizzaPriceReverted.fill("24.00");
+    await pizzaPriceReverted.press("Tab");
+
+    // 5. Add and delete an unclaimed item
+    await addItem(page, "Temp Item", 1, 5.0);
+    // Click the delete button next to Temp Item input (sibling button in same row)
+    await page.locator('input[value="Temp Item"]').locator("xpath=../button").click();
+    await expect(page.locator('input[value="Temp Item"]')).toHaveCount(0, {
+      timeout: 5_000,
+    });
+
+    // 6. Set tax and service charge
+    await page
+      .locator("div")
+      .filter({ hasText: /^Tax$/ })
+      .getByRole("spinbutton")
+      .fill(TAX.toFixed(2));
+    await page
+      .locator("div")
+      .filter({ hasText: /^Tax$/ })
+      .getByRole("spinbutton")
+      .press("Tab");
+
+    await page
+      .locator("div")
+      .filter({ hasText: /^Service Charge$/ })
+      .getByRole("spinbutton")
+      .fill(SERVICE_CHARGE.toFixed(2));
+    await page
+      .locator("div")
+      .filter({ hasText: /^Service Charge$/ })
+      .getByRole("spinbutton")
+      .press("Tab");
+
+    // 7. Verify totals
+    await expect(page.getByText(`$${SUBTOTAL.toFixed(2)}`).first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(`$${TOTAL.toFixed(2)}`).first()).toBeVisible();
+  });
+
+  test("8-10. Add friends, share bill, copy URL", async ({ page }) => {
+    await login(page);
+    await createBill(page, "Share Test");
+
+    // Add an item so share button enables
+    await addItem(page, "Test Item", 1, 20.0);
+
+    // 8. Add friends
+    for (const name of FRIENDS) {
+      await addFriend(page, name);
+    }
+    await expect(page.getByText("Alice")).toBeVisible();
+    await expect(page.getByText("Bob")).toBeVisible();
+
+    // 9. Share bill
+    await page.getByRole("button", { name: "Share with friends" }).click();
+    await expect(page.getByText("shared")).toBeVisible({ timeout: 5_000 });
+
+    // 10. Copy share URL
+    const shareInput = page.locator("input[readonly]");
+    billShareUrl = await shareInput.inputValue();
+    expect(billShareUrl).toContain("/share/");
+
+    await page.getByRole("button").filter({ has: page.locator("svg") }).last().click();
+    // After clicking copy, clipboard should have the URL
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText()
+    );
+    expect(clipboardText).toBe(billShareUrl);
+  });
+
+  test("11-19. Share page: select, claim, split, unclaim", async ({
+    page,
+  }) => {
+    await login(page);
+    await createBill(page, "Split Math Test");
+
+    // Set up: 2 items, tax, svc, 2 friends
+    await addItem(page, "Steak", 1, 40.0);
+    await addItem(page, "Salad", 1, 20.0);
+
+    // Set tax & svc
+    await page
+      .locator("div")
+      .filter({ hasText: /^Tax$/ })
+      .getByRole("spinbutton")
+      .fill("6.00");
+    await page
+      .locator("div")
+      .filter({ hasText: /^Tax$/ })
+      .getByRole("spinbutton")
+      .press("Tab");
+    await page
+      .locator("div")
+      .filter({ hasText: /^Service Charge$/ })
+      .getByRole("spinbutton")
+      .fill("4.00");
+    await page
+      .locator("div")
+      .filter({ hasText: /^Service Charge$/ })
+      .getByRole("spinbutton")
+      .press("Tab");
+
+    await addFriend(page, "Alice");
+    await addFriend(page, "Bob");
+
+    // Share
+    await page.getByRole("button", { name: "Share with friends" }).click();
+    await expect(page.getByText("shared")).toBeVisible({ timeout: 5_000 });
+
+    // Get share URL and navigate to it
+    const shareUrl = await page.locator("input[readonly]").inputValue();
+    await page.goto(shareUrl);
+
+    // 11. Share page loads without auth
+    await expect(
+      page.getByRole("heading", { name: "Split Math Test" })
+    ).toBeVisible({ timeout: 10_000 });
+
+    // 12. Select Alice
+    await page.getByRole("button", { name: "Alice" }).click();
+    await expect(page.getByText("What did you have, Alice?")).toBeVisible();
+
+    // 13. Alice claims Steak ($40)
+    await page.getByRole("checkbox").first().click();
+    await expect(page.getByRole("checkbox").first()).toBeChecked();
+
+    // 14. Verify split: Alice has Steak, only claimer
+    // Alice subtotal $40, proportion = 40/40 = 100%, extras $10, total $50
+    await expect(page.getByText("$50.00").first()).toBeVisible({ timeout: 5_000 });
+
+    // 15. Alice also claims Salad ($20)
+    await page.getByRole("checkbox").nth(1).click();
+    // Alice subtotal $60, all items claimed by her, extras $10, total $70
+    await expect(page.getByText("$70.00").first()).toBeVisible({ timeout: 5_000 });
+
+    // Now switch to Bob
+    await page.getByRole("button", { name: "Bob" }).click();
+    await expect(page.getByText("What did you have, Bob?")).toBeVisible();
+
+    // 19. Badge display: Alice should be shown on both items
+    await expect(page.getByText("Alice").first()).toBeVisible();
+
+    // Bob claims Steak too (shared with Alice)
+    await page.getByRole("checkbox").first().click();
+
+    // 14 & 15. Verify split with shared item:
+    // Steak split: Alice $20, Bob $20. Salad: Alice $20.
+    // Alice subtotal: $40, Bob subtotal: $20. Total claimed: $60.
+    // Alice proportion: 40/60 = 2/3, Bob: 20/60 = 1/3
+    // Alice extras: 10 * 2/3 = 6.67, Bob extras: 10 * 1/3 = 3.33
+    // Alice total: 40 + 6.67 = 46.67, Bob total: 20 + 3.33 = 23.33
+    await expect(page.getByText("$46.67").first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("$23.33").first()).toBeVisible();
+
+    // 16. Verify breakdown
+    await page.getByRole("button", { name: "Show breakdown" }).click();
+    await expect(page.getByText("Tax & svc charge").first()).toBeVisible();
+    // Alice breakdown: Steak $20, Salad $20, Tax & svc $6.67
+    await expect(
+      page.locator("div").filter({ hasText: /^Steak\$20\.00$/ }).first()
+    ).toBeVisible();
+
+    // 17 & 18. Unclaim: Bob unclaims Steak
+    await page.getByRole("button", { name: "Bob" }).click();
+    await page.getByRole("checkbox").first().click();
+    await expect(page.getByRole("checkbox").first()).not.toBeChecked();
+
+    // After unclaim: only Alice has claims, she gets everything
+    // Alice total: $60 + $10 = $70
+    await expect(page.getByText("$70.00").first()).toBeVisible({ timeout: 5_000 });
+    // Bob should not appear in summary (total = 0)
+    await expect(
+      page
+        .locator("div")
+        .filter({ hasText: /^Bob\$/ })
+    ).toHaveCount(0);
+  });
+
+  test("20-24. Confirmation dialogs for destructive actions", async ({
+    page,
+  }) => {
+    await login(page);
+    await createBill(page, "Confirm Test");
+
+    await addItem(page, "Burger", 1, 18.0);
+    await addItem(page, "Fries", 1, 8.0);
+    await addFriend(page, "Charlie");
+    await addFriend(page, "Diana");
+
+    // Share so friends can claim
+    await page.getByRole("button", { name: "Share with friends" }).click();
+    await expect(page.getByText("shared")).toBeVisible({ timeout: 5_000 });
+
+    // Go to share page and have Charlie claim Burger
+    const shareUrl = await page.locator("input[readonly]").inputValue();
+    await page.goto(shareUrl);
+    await expect(page.getByText("Confirm Test")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "Charlie" }).click();
+    await page.getByRole("checkbox").first().click();
+    await expect(page.getByRole("checkbox").first()).toBeChecked();
+
+    // Go back to bill edit page (one goBack from share page)
+    await page.goBack();
+    await expect(page.getByRole("heading", { name: "Confirm Test" })).toBeVisible({ timeout: 10_000 });
+
+    // 20 & 21. Delete Charlie (has claims) - confirm dialog appears, cancel
+    await page
+      .locator("div")
+      .filter({ hasText: /^Charlie$/ })
+      .getByRole("button")
+      .click();
+    await expect(
+      page.getByRole("alertdialog", { name: /Delete "Charlie"/ })
+    ).toBeVisible();
+    await expect(page.getByText("claimed 1 item")).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByText("Charlie")).toBeVisible();
+
+    // 22. Confirm friend deletion
+    await page
+      .locator("div")
+      .filter({ hasText: /^Charlie$/ })
+      .getByRole("button")
+      .click();
+    await page.getByRole("button", { name: "Delete" }).click();
+    // Charlie should be gone
+    await expect(
+      page.locator("div").filter({ hasText: /^Charlie$/ })
+    ).toHaveCount(0, { timeout: 5_000 });
+
+    // Re-add Charlie and have them claim Burger again for item deletion test
+    await addFriend(page, "Charlie");
+    await page.goto(shareUrl);
+    await expect(page.getByText("Confirm Test")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "Charlie" }).click();
+    await page.getByRole("checkbox").first().click();
+
+    // Go back to bill edit (one goBack from share page)
+    await page.goBack();
+    await expect(page.getByRole("heading", { name: "Confirm Test" })).toBeVisible({ timeout: 10_000 });
+
+    // 23. Delete Burger (has claims) - confirm dialog
+    await page.locator('input[value="Burger"]').locator("xpath=../button").click();
+    await expect(
+      page.getByRole("alertdialog", { name: /Delete "Burger"/ })
+    ).toBeVisible();
+    await expect(page.getByText("claimed this item")).toBeVisible();
+
+    // 24. Confirm item deletion
+    await page.getByRole("button", { name: "Delete" }).click();
+    await expect(page.locator('input[value="Burger"]')).toHaveCount(0, {
+      timeout: 5_000,
+    });
+  });
+
+  test("25-28. Dashboard: delete bills, navigation", async ({ page }) => {
+    await login(page);
+
+    // Use unique names with timestamp to avoid conflicts with leftover data
+    const ts = Date.now();
+    const draftName = `Draft ${ts}`;
+    const sharedName = `Shared ${ts}`;
+
+    // Create an editing bill to test direct delete
+    await createBill(page, draftName);
+    await page.getByRole("button").first().click(); // back button
+    await expect(page.getByText(draftName)).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // 26. Delete editing bill (direct, no dialog)
+    await page.getByText(draftName).locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]//button").click();
+    await expect(page.getByText(draftName)).toHaveCount(0, {
+      timeout: 5_000,
+    });
+
+    // Create a shared bill to test confirm dialog
+    await createBill(page, sharedName);
+    await addItem(page, "Dummy", 1, 10.0);
+    await addFriend(page, "Zoe");
+    await page.getByRole("button", { name: "Share with friends" }).click();
+    await expect(page.getByText("shared")).toBeVisible({ timeout: 5_000 });
+
+    // 27. Navigate back to dashboard
+    await page.getByRole("button").first().click(); // back button
+    await expect(
+      page.getByRole("heading", { name: "Split Bill" })
+    ).toBeVisible({ timeout: 5_000 });
+
+    // 25. Delete shared bill (confirm dialog)
+    await page.getByText(sharedName).locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]//button").click();
+    await expect(
+      page.getByRole("alertdialog", { name: new RegExp(`Delete "${sharedName}"`) })
+    ).toBeVisible();
+    await expect(page.getByText("has been shared")).toBeVisible();
+    await page.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText(sharedName)).toHaveCount(0, {
+      timeout: 5_000,
+    });
+
+    // 28. Navigate to bill from dashboard
+    // Click on any remaining bill
+    const firstBill = page.locator("[class*=cursor-pointer]").first();
+    if ((await firstBill.count()) > 0) {
+      const billName = await firstBill.locator("p").first().innerText();
+      await firstBill.click();
+      await expect(
+        page.getByRole("heading", { name: billName })
+      ).toBeVisible({ timeout: 10_000 });
+    }
+  });
+});
