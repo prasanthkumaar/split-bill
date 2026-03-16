@@ -16,22 +16,6 @@ export const list = query({
   },
 })
 
-export const get = query({
-  args: { id: v.id("bills") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
-  },
-})
-
-export const getByShareId = query({
-  args: { shareId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("bills")
-      .withIndex("by_shareId", (q) => q.eq("shareId", args.shareId))
-      .unique()
-  },
-})
 
 export const create = mutation({
   args: {
@@ -117,5 +101,46 @@ export const getImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     return await ctx.storage.getUrl(args.storageId)
+  },
+})
+
+export const getWithImage = query({
+  args: { id: v.id("bills") },
+  handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.id)
+    if (!bill) return null
+    const receiptUrl = bill.imageId
+      ? await ctx.storage.getUrl(bill.imageId)
+      : null
+    return { ...bill, receiptUrl }
+  },
+})
+
+export const getSharePageData = query({
+  args: { shareId: v.string() },
+  handler: async (ctx, args) => {
+    const bill = await ctx.db
+      .query("bills")
+      .withIndex("by_shareId", (q) => q.eq("shareId", args.shareId))
+      .unique()
+    if (!bill) return null
+
+    const [lineItems, friends, claims, receiptUrl] = await Promise.all([
+      ctx.db
+        .query("lineItems")
+        .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+        .collect(),
+      ctx.db
+        .query("friends")
+        .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+        .collect(),
+      ctx.db
+        .query("claims")
+        .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+        .collect(),
+      bill.imageId ? ctx.storage.getUrl(bill.imageId) : null,
+    ])
+
+    return { bill, lineItems, friends, claims, receiptUrl }
   },
 })
