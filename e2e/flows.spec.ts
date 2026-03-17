@@ -319,7 +319,7 @@ test.describe.serial("Bill splitting flows", () => {
       .getByRole("button")
       .click();
     await expect(
-      page.getByRole("alertdialog", { name: /Delete "Charlie"/ })
+      page.getByRole("alertdialog", { name: /Delete \u201CCharlie\u201D/ })
     ).toBeVisible();
     await expect(page.getByText("claimed 1 item")).toBeVisible();
     await page.getByRole("button", { name: "Cancel" }).click();
@@ -353,7 +353,7 @@ test.describe.serial("Bill splitting flows", () => {
     // 23. Delete Burger (has claims) - confirm dialog
     await page.locator('input[value="Burger"]').locator("xpath=../button").click();
     await expect(
-      page.getByRole("alertdialog", { name: /Delete "Burger"/ })
+      page.getByRole("alertdialog", { name: /Delete \u201CBurger\u201D/ })
     ).toBeVisible();
     await expect(page.getByText("claimed this item")).toBeVisible();
 
@@ -401,7 +401,7 @@ test.describe.serial("Bill splitting flows", () => {
     // 25. Delete shared bill (confirm dialog)
     await page.getByText(sharedName).locator("xpath=ancestor::div[contains(@class,'cursor-pointer')]//button").click();
     await expect(
-      page.getByRole("alertdialog", { name: new RegExp(`Delete "${sharedName}"`) })
+      page.getByRole("alertdialog", { name: new RegExp(`Delete \u201C${sharedName}\u201D`) })
     ).toBeVisible();
     await expect(page.getByText("has been shared")).toBeVisible();
     await page.getByRole("button", { name: "Delete" }).click();
@@ -419,5 +419,50 @@ test.describe.serial("Bill splitting flows", () => {
         page.getByRole("heading", { name: billName })
       ).toBeVisible({ timeout: 10_000 });
     }
+  });
+
+  test("29. Auth: unauthenticated user redirected from /bill/[id]", async ({ browser }) => {
+    // Fresh context with no cookies (unauthenticated)
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/bill/fake-id-12345");
+    await page.waitForURL(/sign-in/, { timeout: 10_000 });
+    expect(page.url()).toContain("sign-in");
+    await context.close();
+  });
+
+  test("30. Share page: not found for non-existent shareId", async ({ browser }) => {
+    // Fresh context (no auth needed, share is public)
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/share/non-existent-share-id");
+    await expect(page.getByText("Bill not found")).toBeVisible({ timeout: 10_000 });
+    await context.close();
+  });
+
+  test("31. Responsive: mobile viewport has no horizontal overflow", async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 812 },
+    });
+    const page = await context.newPage();
+    await login(page);
+
+    // Check dashboard
+    const dashboardOverflow = await page.evaluate(() =>
+      document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(dashboardOverflow).toBe(false);
+
+    // Navigate to a bill
+    await createBill(page, `Mobile Test ${Date.now()}`);
+    await addItem(page, "Test Item", 1, 10.0);
+
+    // Check bill page
+    const billOverflow = await page.evaluate(() =>
+      document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(billOverflow).toBe(false);
+
+    await context.close();
   });
 });

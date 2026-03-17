@@ -23,4 +23,5 @@
 
 - Use `agent-browser` CLI for visual verification
 - Dev credentials (Clerk test mode): `test+clerk_test@example.com` / OTP: `424242`
-- Run: `npx playwright test --config e2e/playwright.config.ts`
+- Run: `npm run test:e2e`
+- OCR test (costs API credits): `npm run test:ocr`

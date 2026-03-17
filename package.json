@@ -8,7 +8,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "test:e2e": "npx playwright test --config e2e/playwright.config.ts"
+    "test:e2e": "npx playwright test --config e2e/playwright.config.ts e2e/flows.spec.ts",
+    "test:ocr": "npx playwright test --config e2e/playwright.config.ts e2e/receipt-upload.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

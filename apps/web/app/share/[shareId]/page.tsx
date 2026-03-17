@@ -29,10 +29,18 @@ export default function SharePage() {
   )
   const [showBreakdown, setShowBreakdown] = useState(false)
 
-  if (!data) {
+  if (data === undefined) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
+
+  if (data === null) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <p className="text-muted-foreground">Bill not found</p>
       </div>
     )
   }
