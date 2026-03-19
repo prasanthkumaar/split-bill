@@ -167,17 +167,24 @@ export default function BillPage() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) uploadReceipt(file);
+              e.target.value = "";
             }}
           />
-          {receiptUrl && (
-            <div className="relative mb-3 aspect-3/4 w-full">
-              <Image
-                src={receiptUrl}
-                alt="Receipt"
-                fill
-                className="rounded-md border object-contain"
-              />
+          {uploading ? (
+            <div className="mb-3 flex aspect-3/4 w-full items-center justify-center rounded-md border bg-muted">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
+          ) : (
+            receiptUrl && (
+              <div className="relative mb-3 aspect-3/4 w-full">
+                <Image
+                  src={receiptUrl}
+                  alt="Receipt"
+                  fill
+                  className="rounded-md border object-contain"
+                />
+              </div>
+            )
           )}
           <Button
             variant="outline"
@@ -310,6 +317,7 @@ export default function BillPage() {
           <div>
             <Label className="text-xs">Tax</Label>
             <Input
+              key={`tax-${bill.tax}`}
               type="number"
               step="0.01"
               defaultValue={bill.tax.toFixed(2)}
@@ -321,6 +329,7 @@ export default function BillPage() {
           <div>
             <Label className="text-xs">Service Charge</Label>
             <Input
+              key={`sc-${bill.serviceCharge}`}
               type="number"
               step="0.01"
               defaultValue={bill.serviceCharge.toFixed(2)}

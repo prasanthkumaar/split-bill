@@ -13,8 +13,18 @@ import {
   CardDescription,
 } from "@workspace/ui/components/card"
 import { Checkbox } from "@workspace/ui/components/checkbox"
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+} from "@workspace/ui/components/combobox"
 import { Separator } from "@workspace/ui/components/separator"
-import { Badge } from "@workspace/ui/components/badge"
 import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp } from "lucide-react"
@@ -93,8 +103,7 @@ export default function SharePage() {
   )
   const unclaimed = subtotal - claimedSubtotal
   const splits = Array.from(friendTotals.entries()).map(([id, data]) => {
-    const proportion =
-      claimedSubtotal > 0 ? data.subtotal / claimedSubtotal : 0
+    const proportion = subtotal > 0 ? data.subtotal / subtotal : 0
     const extraShare = extras * proportion
     return {
       id,
@@ -136,14 +145,29 @@ export default function SharePage() {
     })
   }
 
+  const handleOthersChange = (
+    newValue: string[],
+    currentOthers: string[],
+    lineItemId: Id<"lineItems">,
+    unitIndex: number
+  ) => {
+    const added = newValue.find((id) => !currentOthers.includes(id))
+    const removed = currentOthers.find((id) => !newValue.includes(id))
+    const friendId = (added ?? removed) as Id<"friends"> | undefined
+    if (!friendId) return
+    toggleClaim({ billId: bill._id, friendId, lineItemId, unitIndex })
+  }
+
   const selectedFriendName = friends.find((f) => f._id === selectedFriend)?.name
+
+  const otherFriends = friends.filter((f) => f._id !== selectedFriend)
 
   return (
     <div className="mx-auto max-w-2xl p-6">
       <div className="mb-6">
         <h1 className="text-xl font-semibold">{bill.name}</h1>
         <p className="text-sm text-muted-foreground">
-          Select your name, then tick what you had
+          Select your name, then tick what you had.
         </p>
       </div>
 
@@ -187,8 +211,7 @@ export default function SharePage() {
               What did you have, {selectedFriendName}?
             </CardTitle>
             <CardDescription>
-              Tick each item you had. Shared items are split equally among
-              everyone who selects them.
+              Tick what you had. Know what others ordered? Tag them below.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -200,43 +223,79 @@ export default function SharePage() {
               )
               const claimKey = `${item._id}:${item.unitIndex}`
               const claimers = claimsByItem.get(claimKey) ?? []
-              const otherClaimers = claimers
-                .filter((id) => id !== selectedFriend)
-                .map((id) => friends.find((f) => f._id === id)?.name)
-                .filter(Boolean)
+              const otherClaimerIds = claimers.filter(
+                (id) => id !== selectedFriend
+              )
 
               return (
                 <div
                   key={`${item._id}-${item.unitIndex}`}
-                  className="flex items-start gap-3"
+                  className="space-y-1.5"
                 >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={() =>
-                      handleToggle(item._id, item.unitIndex)
-                    }
-                    className="mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() =>
+                        handleToggle(item._id, item.unitIndex)
+                      }
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-1 items-center justify-between">
                       <span className="text-sm font-medium">{item.name}</span>
                       <span className="text-sm">
                         ${item.displayPrice.toFixed(2)}
                       </span>
                     </div>
-                    {otherClaimers.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {otherClaimers.map((name) => (
-                          <Badge
-                            key={name}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                  </div>
+                  <div className="pl-7">
+                    <label className="mb-1 block text-xs text-muted-foreground">
+                      Shared with
+                    </label>
+                    <Combobox
+                      items={otherFriends.map((f) => f.name)}
+                      multiple
+                      value={otherClaimerIds.map(
+                        (id) =>
+                          friends.find((f) => f._id === id)?.name ?? ""
+                      )}
+                      onValueChange={(names: string[]) => {
+                        const newIds = names
+                          .map(
+                            (name) =>
+                              otherFriends.find((f) => f.name === name)?._id
+                          )
+                          .filter(Boolean) as string[]
+                        handleOthersChange(
+                          newIds,
+                          otherClaimerIds,
+                          item._id,
+                          item.unitIndex
+                        )
+                      }}
+                    >
+                      <ComboboxChips className="min-h-8 text-xs">
+                        <ComboboxValue>
+                          {otherClaimerIds.map((id) => {
+                            const name =
+                              friends.find((f) => f._id === id)?.name ?? ""
+                            return (
+                              <ComboboxChip key={id}>{name}</ComboboxChip>
+                            )
+                          })}
+                        </ComboboxValue>
+                        <ComboboxChipsInput placeholder="Add others..." />
+                      </ComboboxChips>
+                      <ComboboxContent>
+                        <ComboboxEmpty>No one found.</ComboboxEmpty>
+                        <ComboboxList>
+                          {(item) => (
+                            <ComboboxItem key={item} value={item}>
+                              {item}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                   </div>
                 </div>
               )
