@@ -175,7 +175,7 @@ test.describe.serial("Bill splitting flows", () => {
     expect(clipboardText).toBe(billShareUrl);
   });
 
-  test("11-19. Share page: select, claim, split, unclaim", async ({
+  test("11-19. Share page: claim via combobox, split, unclaim", async ({
     page,
   }) => {
     await login(page);
@@ -218,39 +218,33 @@ test.describe.serial("Bill splitting flows", () => {
     const shareUrl = await page.locator("input[readonly]").inputValue();
     await page.goto(shareUrl);
 
-    // 11. Share page loads without auth
+    // 11. Share page loads without auth, items visible immediately
     await expect(
       page.getByRole("heading", { name: "Split Math Test" })
     ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Tag everyone to what they had.")).toBeVisible();
 
-    // 12. Select Alice
-    await page.getByRole("button", { name: "Alice" }).click();
-    await expect(page.getByText("What did you have, Alice?")).toBeVisible();
+    // 13. Tag Alice on Steak via combobox
+    const steakCombobox = page.getByPlaceholder("Add people...").first();
+    await steakCombobox.fill("Alice");
+    await page.getByRole("option", { name: "Alice" }).click();
 
-    // 13. Alice claims Steak ($40)
-    await page.getByRole("checkbox").first().click();
-    await expect(page.getByRole("checkbox").first()).toBeChecked();
+    // 14. Verify split: Alice has Steak ($40)
+    // Alice subtotal $40, proportion = 40/60 = 2/3, extras = 10 * 2/3 = $6.67, total = $46.67
+    await expect(page.getByText("$46.67").first()).toBeVisible({ timeout: 5_000 });
 
-    // 14. Verify split: Alice has Steak, only claimer
-    // Alice subtotal $40, proportion = 40/40 = 100%, extras $10, total $50
-    await expect(page.getByText("$50.00").first()).toBeVisible({ timeout: 5_000 });
-
-    // 15. Alice also claims Salad ($20)
-    await page.getByRole("checkbox").nth(1).click();
-    // Alice subtotal $60, all items claimed by her, extras $10, total $70
+    // 15. Tag Alice on Salad too
+    const saladCombobox = page.getByPlaceholder("Add people...").nth(1);
+    await saladCombobox.fill("Alice");
+    await page.getByRole("option", { name: "Alice" }).click();
+    // Alice subtotal $60, proportion = 60/60 = 100%, extras $10, total $70
     await expect(page.getByText("$70.00").first()).toBeVisible({ timeout: 5_000 });
 
-    // Now switch to Bob
-    await page.getByRole("button", { name: "Bob" }).click();
-    await expect(page.getByText("What did you have, Bob?")).toBeVisible();
+    // Tag Bob on Steak too (shared with Alice)
+    await steakCombobox.fill("Bob");
+    await page.getByRole("option", { name: "Bob" }).click();
 
-    // 19. Badge display: Alice should be shown on both items
-    await expect(page.getByText("Alice").first()).toBeVisible();
-
-    // Bob claims Steak too (shared with Alice)
-    await page.getByRole("checkbox").first().click();
-
-    // 14 & 15. Verify split with shared item:
+    // Verify split with shared item:
     // Steak split: Alice $20, Bob $20. Salad: Alice $20.
     // Alice subtotal: $40, Bob subtotal: $20. Total claimed: $60.
     // Alice proportion: 40/60 = 2/3, Bob: 20/60 = 1/3
@@ -267,10 +261,10 @@ test.describe.serial("Bill splitting flows", () => {
       page.locator("div").filter({ hasText: /^Steak\$20\.00$/ }).first()
     ).toBeVisible();
 
-    // 17 & 18. Unclaim: Bob unclaims Steak
-    await page.getByRole("button", { name: "Bob" }).click();
-    await page.getByRole("checkbox").first().click();
-    await expect(page.getByRole("checkbox").first()).not.toBeChecked();
+    // 17 & 18. Unclaim: remove Bob's chip from Steak
+    // Find the Bob chip inside the Steak item row and click its remove button
+    const steakRow = page.locator("div").filter({ hasText: /^Steak/ }).first();
+    await steakRow.locator("[data-slot='combobox-chip']").filter({ hasText: "Bob" }).locator("[data-slot='combobox-chip-remove']").click();
 
     // After unclaim: only Alice has claims, she gets everything
     // Alice total: $60 + $10 = $70
@@ -298,15 +292,15 @@ test.describe.serial("Bill splitting flows", () => {
     await page.getByRole("button", { name: "Share with friends" }).click();
     await expect(page.getByText("shared")).toBeVisible({ timeout: 5_000 });
 
-    // Go to share page and have Charlie claim Burger
+    // Go to share page and tag Charlie on Burger via combobox
     const shareUrl = await page.locator("input[readonly]").inputValue();
     await page.goto(shareUrl);
     await expect(page.getByText("Confirm Test")).toBeVisible({
       timeout: 10_000,
     });
-    await page.getByRole("button", { name: "Charlie" }).click();
-    await page.getByRole("checkbox").first().click();
-    await expect(page.getByRole("checkbox").first()).toBeChecked();
+    const burgerCombobox = page.getByPlaceholder("Add people...").first();
+    await burgerCombobox.fill("Charlie");
+    await page.getByRole("option", { name: "Charlie" }).click();
 
     // Go back to bill edit page (one goBack from share page)
     await page.goBack();
@@ -337,14 +331,15 @@ test.describe.serial("Bill splitting flows", () => {
       page.locator("div").filter({ hasText: /^Charlie$/ })
     ).toHaveCount(0, { timeout: 5_000 });
 
-    // Re-add Charlie and have them claim Burger again for item deletion test
+    // Re-add Charlie and tag them on Burger again for item deletion test
     await addFriend(page, "Charlie");
     await page.goto(shareUrl);
     await expect(page.getByText("Confirm Test")).toBeVisible({
       timeout: 10_000,
     });
-    await page.getByRole("button", { name: "Charlie" }).click();
-    await page.getByRole("checkbox").first().click();
+    const burgerCombobox2 = page.getByPlaceholder("Add people...").first();
+    await burgerCombobox2.fill("Charlie");
+    await page.getByRole("option", { name: "Charlie" }).click();
 
     // Go back to bill edit (one goBack from share page)
     await page.goBack();

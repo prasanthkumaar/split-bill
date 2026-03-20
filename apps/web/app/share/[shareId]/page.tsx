@@ -5,7 +5,6 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
-import { Checkbox } from "@workspace/ui/components/checkbox"
 import {
   Combobox,
   ComboboxChip,
@@ -33,9 +32,6 @@ export default function SharePage() {
   const data = useQuery(api.bills.getSharePageData, { shareId })
   const toggleClaim = useMutation(api.claims.toggle)
 
-  const [selectedFriend, setSelectedFriend] = useState<Id<"friends"> | null>(
-    null
-  )
   const [showBreakdown, setShowBreakdown] = useState(false)
 
   if (data === undefined) {
@@ -122,44 +118,23 @@ export default function SharePage() {
     }))
   )
 
-  const hasClaimed = (
-    friendId: Id<"friends">,
+  const handleClaimChange = (
+    newNames: string[],
+    currentClaimerIds: string[],
     lineItemId: Id<"lineItems">,
     unitIndex: number
   ) => {
-    const claimers = claimsByItem.get(`${lineItemId}:${unitIndex}`) ?? []
-    return claimers.includes(friendId)
-  }
-
-  const handleToggle = async (
-    lineItemId: Id<"lineItems">,
-    unitIndex: number
-  ) => {
-    if (!selectedFriend) return
-    await toggleClaim({
-      billId: bill._id,
-      friendId: selectedFriend,
-      lineItemId,
-      unitIndex,
-    })
-  }
-
-  const handleOthersChange = (
-    newValue: string[],
-    currentOthers: string[],
-    lineItemId: Id<"lineItems">,
-    unitIndex: number
-  ) => {
-    const added = newValue.find((id) => !currentOthers.includes(id))
-    const removed = currentOthers.find((id) => !newValue.includes(id))
-    const friendId = (added ?? removed) as Id<"friends"> | undefined
+    const currentNames = currentClaimerIds
+      .map((id) => friends.find((f) => f._id === id)?.name ?? "")
+      .filter(Boolean)
+    const added = newNames.find((name) => !currentNames.includes(name))
+    const removed = currentNames.find((name) => !newNames.includes(name))
+    const changedName = added ?? removed
+    if (!changedName) return
+    const friendId = friends.find((f) => f.name === changedName)?._id
     if (!friendId) return
     toggleClaim({ billId: bill._id, friendId, lineItemId, unitIndex })
   }
-
-  const selectedFriendName = friends.find((f) => f._id === selectedFriend)?.name
-
-  const otherFriends = friends.filter((f) => f._id !== selectedFriend)
 
   return (
     <div className="min-h-svh bg-zinc-100 dark:bg-zinc-900">
@@ -168,7 +143,7 @@ export default function SharePage() {
         <div className="bg-background px-4 py-3">
           <h1 className="text-lg font-semibold">{bill.name}</h1>
           <p className="text-sm text-muted-foreground">
-            Select your name, then tick what you had.
+            Tag everyone to what they had.
           </p>
 
           {receiptUrl && (
@@ -200,122 +175,67 @@ export default function SharePage() {
           )}
         </div>
 
-        {/* Who are you? band */}
+        {/* Items band */}
         <div className="bg-background px-4 py-3">
-          <p className="text-sm font-medium">Who are you?</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {friends.map((friend) => (
-              <Button
-                key={friend._id}
-                variant={selectedFriend === friend._id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedFriend(friend._id)}
-              >
-                {friend.name}
-              </Button>
-            ))}
+          <div className="mt-1">
+            {expandedItems.map((item) => {
+              const claimKey = `${item._id}:${item.unitIndex}`
+              const claimerIds = claimsByItem.get(claimKey) ?? []
+
+              return (
+                <div key={`${item._id}-${item.unitIndex}`}>
+                  <div className="py-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      <span className="text-sm">
+                        ${item.displayPrice.toFixed(2)}
+                      </span>
+                    </div>
+                    <Combobox
+                      items={friends.map((f) => f.name)}
+                      multiple
+                      value={claimerIds.map(
+                        (id) =>
+                          friends.find((f) => f._id === id)?.name ?? ""
+                      )}
+                      onValueChange={(names: string[]) => {
+                        handleClaimChange(
+                          names,
+                          claimerIds,
+                          item._id,
+                          item.unitIndex
+                        )
+                      }}
+                    >
+                      <ComboboxChips className="min-h-8 text-xs">
+                        <ComboboxValue>
+                          {claimerIds.map((id) => {
+                            const name =
+                              friends.find((f) => f._id === id)?.name ?? ""
+                            return (
+                              <ComboboxChip key={id}>{name}</ComboboxChip>
+                            )
+                          })}
+                        </ComboboxValue>
+                        <ComboboxChipsInput placeholder="Add people..." />
+                      </ComboboxChips>
+                      <ComboboxContent>
+                        <ComboboxEmpty>No one found.</ComboboxEmpty>
+                        <ComboboxList>
+                          {(item) => (
+                            <ComboboxItem key={item} value={item}>
+                              {item}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
-
-        {/* Items band */}
-        {selectedFriend && (
-          <div className="bg-background px-4 py-3">
-            <p className="text-sm font-medium">
-              What did you have, {selectedFriendName}?
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Tick what you had. Know what others ordered? Tag them below.
-            </p>
-            <div className="mt-3">
-              {expandedItems.map((item, index) => {
-                const checked = hasClaimed(
-                  selectedFriend,
-                  item._id,
-                  item.unitIndex
-                )
-                const claimKey = `${item._id}:${item.unitIndex}`
-                const claimers = claimsByItem.get(claimKey) ?? []
-                const otherClaimerIds = claimers.filter(
-                  (id) => id !== selectedFriend
-                )
-
-                return (
-                  <div key={`${item._id}-${item.unitIndex}`}>
-                    <div className="py-3 space-y-1.5">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={() =>
-                            handleToggle(item._id, item.unitIndex)
-                          }
-                          className="mt-0.5"
-                        />
-                        <div className="flex flex-1 items-center justify-between">
-                          <span className="text-sm font-medium">
-                            {item.name}
-                          </span>
-                          <span className="text-sm">
-                            ${item.displayPrice.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="pl-7">
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Shared with
-                        </label>
-                        <Combobox
-                          items={otherFriends.map((f) => f.name)}
-                          multiple
-                          value={otherClaimerIds.map(
-                            (id) =>
-                              friends.find((f) => f._id === id)?.name ?? ""
-                          )}
-                          onValueChange={(names: string[]) => {
-                            const newIds = names
-                              .map(
-                                (name) =>
-                                  otherFriends.find((f) => f.name === name)?._id
-                              )
-                              .filter(Boolean) as string[]
-                            handleOthersChange(
-                              newIds,
-                              otherClaimerIds,
-                              item._id,
-                              item.unitIndex
-                            )
-                          }}
-                        >
-                          <ComboboxChips className="min-h-8 text-xs">
-                            <ComboboxValue>
-                              {otherClaimerIds.map((id) => {
-                                const name =
-                                  friends.find((f) => f._id === id)?.name ?? ""
-                                return (
-                                  <ComboboxChip key={id}>{name}</ComboboxChip>
-                                )
-                              })}
-                            </ComboboxValue>
-                            <ComboboxChipsInput placeholder="Add others..." />
-                          </ComboboxChips>
-                          <ComboboxContent>
-                            <ComboboxEmpty>No one found.</ComboboxEmpty>
-                            <ComboboxList>
-                              {(item) => (
-                                <ComboboxItem key={item} value={item}>
-                                  {item}
-                                </ComboboxItem>
-                              )}
-                            </ComboboxList>
-                          </ComboboxContent>
-                        </Combobox>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Split Summary band */}
         <div className="bg-background px-4 py-3">
