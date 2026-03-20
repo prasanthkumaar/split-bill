@@ -162,7 +162,7 @@ export default function SharePage() {
   const otherFriends = friends.filter((f) => f._id !== selectedFriend)
 
   return (
-    <div className="min-h-svh bg-zinc-100">
+    <div className="min-h-svh bg-zinc-100 dark:bg-zinc-900">
       <div className="mx-auto max-w-2xl space-y-3">
         {/* Header band */}
         <div className="bg-background px-4 py-3">
