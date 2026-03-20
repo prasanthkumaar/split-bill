@@ -27,7 +27,7 @@ async function login(page: Page) {
   // Wait for OTP input to be ready (Clerk needs to initiate the verification)
   await page.getByRole("textbox", { name: "Enter verification code" }).waitFor({ timeout: 10_000 });
   // Small delay to let Clerk fully initialise the OTP flow
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1500);
   // Clerk OTP input needs pressSequentially (individual keystrokes) to trigger verification
   await page
     .getByRole("textbox", { name: "Enter verification code" })

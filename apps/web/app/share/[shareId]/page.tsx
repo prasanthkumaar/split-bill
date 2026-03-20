@@ -264,7 +264,7 @@ export default function SharePage() {
 
             return (
               <div key={`${item._id}-${item.unitIndex}`}>
-                <div className="space-y-1.5 py-2">
+                <div className="space-y-1 py-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{item.name}</span>
                     <span className="text-sm">
