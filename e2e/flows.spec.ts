@@ -261,10 +261,9 @@ test.describe.serial("Bill splitting flows", () => {
       page.locator("div").filter({ hasText: /^Steak\$20\.00$/ }).first()
     ).toBeVisible();
 
-    // 17 & 18. Unclaim: remove Bob's chip from Steak
-    // Find the Bob chip inside the Steak item row and click its remove button
-    const steakRow = page.locator("div").filter({ hasText: /^Steak/ }).first();
-    await steakRow.locator("[data-slot='combobox-chip']").filter({ hasText: "Bob" }).locator("[data-slot='combobox-chip-remove']").click();
+    // 17 & 18. Unclaim: remove Bob from Steak
+    // First toolbar is Steak's chip area. Find the chip containing "Bob" and click its remove button.
+    await page.getByRole("toolbar").first().locator("[data-slot='combobox-chip']").filter({ hasText: "Bob" }).getByRole("button").click();
 
     // After unclaim: only Alice has claims, she gets everything
     // Alice total: $60 + $10 = $70

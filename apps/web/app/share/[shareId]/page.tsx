@@ -139,12 +139,24 @@ export default function SharePage() {
   return (
     <div className="min-h-svh bg-zinc-100 dark:bg-zinc-900">
       <div className="mx-auto max-w-2xl space-y-3">
-        {/* Header band */}
+        {/* Overview band: name, receipt, split summary */}
         <div className="bg-background px-4 py-3">
-          <h1 className="text-lg font-semibold">{bill.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            Tag everyone to what they had.
-          </p>
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold">{bill.name}</h1>
+            {splits.some((s) => s.total > 0) && (
+              <button
+                className="flex items-center gap-1 text-sm font-medium text-primary"
+                onClick={() => setShowBreakdown(!showBreakdown)}
+              >
+                {showBreakdown ? (
+                  <EyeOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+                {showBreakdown ? "Hide breakdown" : "Show breakdown"}
+              </button>
+            )}
+          </div>
 
           {receiptUrl && (
             <Dialog>
@@ -173,90 +185,8 @@ export default function SharePage() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
 
-        {/* Items band */}
-        <div className="bg-background px-4 py-3">
-          <div className="mt-1">
-            {expandedItems.map((item) => {
-              const claimKey = `${item._id}:${item.unitIndex}`
-              const claimerIds = claimsByItem.get(claimKey) ?? []
-
-              return (
-                <div key={`${item._id}-${item.unitIndex}`}>
-                  <div className="py-3 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{item.name}</span>
-                      <span className="text-sm">
-                        ${item.displayPrice.toFixed(2)}
-                      </span>
-                    </div>
-                    <Combobox
-                      items={friends.map((f) => f.name)}
-                      multiple
-                      value={claimerIds.map(
-                        (id) =>
-                          friends.find((f) => f._id === id)?.name ?? ""
-                      )}
-                      onValueChange={(names: string[]) => {
-                        handleClaimChange(
-                          names,
-                          claimerIds,
-                          item._id,
-                          item.unitIndex
-                        )
-                      }}
-                    >
-                      <ComboboxChips className="min-h-8 text-xs">
-                        <ComboboxValue>
-                          {claimerIds.map((id) => {
-                            const name =
-                              friends.find((f) => f._id === id)?.name ?? ""
-                            return (
-                              <ComboboxChip key={id}>{name}</ComboboxChip>
-                            )
-                          })}
-                        </ComboboxValue>
-                        <ComboboxChipsInput placeholder="Add people..." />
-                      </ComboboxChips>
-                      <ComboboxContent>
-                        <ComboboxEmpty>No one found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item} value={item}>
-                              {item}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Split Summary band */}
-        <div className="bg-background px-4 py-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Split Summary</p>
-            {splits.some((s) => s.total > 0) && (
-              <button
-                className="flex items-center gap-1 text-sm font-medium text-primary"
-                onClick={() => setShowBreakdown(!showBreakdown)}
-              >
-                {showBreakdown ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-                {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-              </button>
-            )}
-          </div>
-
-          <div className="mt-3 space-y-3">
+          <div className="mt-4 space-y-3">
             {splits
               .filter((s) => s.total > 0)
               .map((split) => (
@@ -306,6 +236,69 @@ export default function SharePage() {
                 <span>${unclaimed.toFixed(2)}</span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Tagging band */}
+        <div className="bg-background px-4 py-3">
+          <p className="text-sm font-medium">Split bill</p>
+          <p className="text-xs text-muted-foreground">
+            Tag everyone to what they had
+          </p>
+          <div className="mt-3">
+            {expandedItems.map((item) => {
+              const claimKey = `${item._id}:${item.unitIndex}`
+              const claimerIds = claimsByItem.get(claimKey) ?? []
+
+              return (
+                <div key={`${item._id}-${item.unitIndex}`}>
+                  <div className="space-y-1.5 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      <span className="text-sm">
+                        ${item.displayPrice.toFixed(2)}
+                      </span>
+                    </div>
+                    <Combobox
+                      items={friends.map((f) => f.name)}
+                      multiple
+                      value={claimerIds.map(
+                        (id) => friends.find((f) => f._id === id)?.name ?? ""
+                      )}
+                      onValueChange={(names: string[]) => {
+                        handleClaimChange(
+                          names,
+                          claimerIds,
+                          item._id,
+                          item.unitIndex
+                        )
+                      }}
+                    >
+                      <ComboboxChips className="min-h-8 text-xs">
+                        <ComboboxValue>
+                          {claimerIds.map((id) => {
+                            const name =
+                              friends.find((f) => f._id === id)?.name ?? ""
+                            return <ComboboxChip key={id}>{name}</ComboboxChip>
+                          })}
+                        </ComboboxValue>
+                        <ComboboxChipsInput placeholder="Add people..." />
+                      </ComboboxChips>
+                      <ComboboxContent>
+                        <ComboboxEmpty>No one found.</ComboboxEmpty>
+                        <ComboboxList>
+                          {(item) => (
+                            <ComboboxItem key={item} value={item}>
+                              {item}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
