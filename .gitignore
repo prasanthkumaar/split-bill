@@ -15,9 +15,6 @@ node_modules
 # Testing
 coverage
 test-results/
-e2e/*.png
-e2e/*.jpg
-e2e/*.jpeg
 
 # Turbo
 .turbo
