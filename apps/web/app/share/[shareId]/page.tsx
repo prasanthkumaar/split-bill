@@ -143,30 +143,17 @@ export default function SharePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="mx-auto max-w-2xl p-5">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">{bill.name}</h1>
-        {splits.some((s) => s.total > 0) && (
-          <button
-            className="flex items-center gap-1 text-sm font-medium text-primary"
-            onClick={() => setShowBreakdown(!showBreakdown)}
-          >
-            {showBreakdown ? (
-              <EyeOff className="h-3.5 w-3.5" />
-            ) : (
-              <Eye className="h-3.5 w-3.5" />
-            )}
-            {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-          </button>
-        )}
       </div>
 
-      {/* Receipt */}
-      {receiptUrl && (
-        <Card className="mb-4">
-          <CardContent className="py-4">
+      {/* Receipt + Split Summary */}
+      <Card className="mb-4">
+        <CardContent className="space-y-3 py-4">
+          {receiptUrl && (
             <Dialog>
-              <div className="relative h-30 w-full overflow-hidden rounded-lg">
+              <div className="relative h-40 w-full overflow-hidden rounded-lg">
                 <Image
                   src={receiptUrl}
                   alt="Receipt"
@@ -175,7 +162,7 @@ export default function SharePage() {
                 />
               </div>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="mt-2 w-full">
+                <Button variant="outline" size="sm" className="w-full">
                   View full receipt
                 </Button>
               </DialogTrigger>
@@ -190,13 +177,24 @@ export default function SharePage() {
                 />
               </DialogContent>
             </Dialog>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Split Summary */}
-      <Card className="mb-4">
-        <CardContent className="space-y-3 py-4">
+          <div className="mt-4 flex justify-between">
+            <div className="text-lg font-bold">Summary</div>
+            {splits.some((s) => s.total > 0) && (
+              <button
+                className="flex items-center gap-1 text-sm font-medium text-primary dark:text-purple-400"
+                onClick={() => setShowBreakdown(!showBreakdown)}
+              >
+                {showBreakdown ? (
+                  <EyeOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+                {showBreakdown ? "Hide breakdown" : "Show breakdown"}
+              </button>
+            )}
+          </div>
           {splits
             .filter((s) => s.total > 0)
             .map((split) => (
@@ -252,7 +250,7 @@ export default function SharePage() {
       {/* Tagging */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Split bill</CardTitle>
+          <CardTitle className="text-lg font-bold">Split bill</CardTitle>
           <p className="text-xs text-muted-foreground">
             Tag everyone to what they had
           </p>
@@ -286,7 +284,7 @@ export default function SharePage() {
                       )
                     }}
                   >
-                    <ComboboxChips className="min-h-8 text-xs">
+                    <ComboboxChips className="mt-2 min-h-8 text-xs">
                       <ComboboxValue>
                         {claimerIds.map((id) => {
                           const name =
