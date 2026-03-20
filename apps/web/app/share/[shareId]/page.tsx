@@ -6,6 +6,12 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
+import {
   Combobox,
   ComboboxChip,
   ComboboxChips,
@@ -137,30 +143,30 @@ export default function SharePage() {
   }
 
   return (
-    <div className="min-h-svh bg-zinc-100 dark:bg-zinc-900">
-      <div className="mx-auto max-w-2xl space-y-3">
-        {/* Overview band: name, receipt, split summary */}
-        <div className="bg-background px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold">{bill.name}</h1>
-            {splits.some((s) => s.total > 0) && (
-              <button
-                className="flex items-center gap-1 text-sm font-medium text-primary"
-                onClick={() => setShowBreakdown(!showBreakdown)}
-              >
-                {showBreakdown ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-                {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-              </button>
+    <div className="mx-auto max-w-2xl p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">{bill.name}</h1>
+        {splits.some((s) => s.total > 0) && (
+          <button
+            className="flex items-center gap-1 text-sm font-medium text-primary"
+            onClick={() => setShowBreakdown(!showBreakdown)}
+          >
+            {showBreakdown ? (
+              <EyeOff className="h-3.5 w-3.5" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" />
             )}
-          </div>
+            {showBreakdown ? "Hide breakdown" : "Show breakdown"}
+          </button>
+        )}
+      </div>
 
-          {receiptUrl && (
+      {/* Receipt */}
+      {receiptUrl && (
+        <Card className="mb-4">
+          <CardContent className="py-4">
             <Dialog>
-              <div className="relative mt-3 h-30 w-full overflow-hidden rounded-lg">
+              <div className="relative h-30 w-full overflow-hidden rounded-lg">
                 <Image
                   src={receiptUrl}
                   alt="Receipt"
@@ -184,124 +190,129 @@ export default function SharePage() {
                 />
               </DialogContent>
             </Dialog>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Split Summary */}
+      <Card className="mb-4">
+        <CardContent className="space-y-3 py-4">
+          {splits
+            .filter((s) => s.total > 0)
+            .map((split) => (
+              <div key={split.id}>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{split.name}</span>
+                  <span className="font-semibold">
+                    ${split.total.toFixed(2)}
+                  </span>
+                </div>
+                {showBreakdown && (
+                  <div className="mt-1 mb-2 ml-2 space-y-0.5">
+                    {split.items.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between text-xs text-muted-foreground"
+                      >
+                        <span>{item.name}</span>
+                        <span>${item.amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Tax & svc charge</span>
+                      <span>${split.extras.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+          {splits.every((s) => s.total === 0) && (
+            <p className="text-center text-sm text-muted-foreground">
+              No items claimed yet.
+            </p>
           )}
 
-          <div className="mt-4 space-y-3">
-            {splits
-              .filter((s) => s.total > 0)
-              .map((split) => (
-                <div key={split.id}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{split.name}</span>
-                    <span className="font-semibold">
-                      ${split.total.toFixed(2)}
-                    </span>
-                  </div>
-                  {showBreakdown && (
-                    <div className="mt-1 mb-2 ml-2 space-y-0.5">
-                      {split.items.map((item, i) => (
-                        <div
-                          key={i}
-                          className="flex justify-between text-xs text-muted-foreground"
-                        >
-                          <span>{item.name}</span>
-                          <span>${item.amount.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Tax & svc charge</span>
-                        <span>${split.extras.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+          <Separator />
 
-            {splits.every((s) => s.total === 0) && (
-              <p className="text-center text-sm text-muted-foreground">
-                No items claimed yet.
-              </p>
-            )}
-
-            <Separator />
-
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Bill total</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-
-            {unclaimed > 0 && (
-              <div className="flex justify-between text-sm text-red-500">
-                <span>Unaccounted</span>
-                <span>${unclaimed.toFixed(2)}</span>
-              </div>
-            )}
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Bill total</span>
+            <span>${total.toFixed(2)}</span>
           </div>
-        </div>
 
-        {/* Tagging band */}
-        <div className="bg-background px-4 py-3">
-          <p className="text-sm font-medium">Split bill</p>
+          {unclaimed > 0 && (
+            <div className="flex justify-between text-sm text-red-500">
+              <span>Unaccounted</span>
+              <span>${unclaimed.toFixed(2)}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tagging */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Split bill</CardTitle>
           <p className="text-xs text-muted-foreground">
             Tag everyone to what they had
           </p>
-          <div className="mt-3">
-            {expandedItems.map((item) => {
-              const claimKey = `${item._id}:${item.unitIndex}`
-              const claimerIds = claimsByItem.get(claimKey) ?? []
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {expandedItems.map((item) => {
+            const claimKey = `${item._id}:${item.unitIndex}`
+            const claimerIds = claimsByItem.get(claimKey) ?? []
 
-              return (
-                <div key={`${item._id}-${item.unitIndex}`}>
-                  <div className="space-y-1.5 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{item.name}</span>
-                      <span className="text-sm">
-                        ${item.displayPrice.toFixed(2)}
-                      </span>
-                    </div>
-                    <Combobox
-                      items={friends.map((f) => f.name)}
-                      multiple
-                      value={claimerIds.map(
-                        (id) => friends.find((f) => f._id === id)?.name ?? ""
-                      )}
-                      onValueChange={(names: string[]) => {
-                        handleClaimChange(
-                          names,
-                          claimerIds,
-                          item._id,
-                          item.unitIndex
-                        )
-                      }}
-                    >
-                      <ComboboxChips className="min-h-8 text-xs">
-                        <ComboboxValue>
-                          {claimerIds.map((id) => {
-                            const name =
-                              friends.find((f) => f._id === id)?.name ?? ""
-                            return <ComboboxChip key={id}>{name}</ComboboxChip>
-                          })}
-                        </ComboboxValue>
-                        <ComboboxChipsInput placeholder="Add people..." />
-                      </ComboboxChips>
-                      <ComboboxContent>
-                        <ComboboxEmpty>No one found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item} value={item}>
-                              {item}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
+            return (
+              <div key={`${item._id}-${item.unitIndex}`}>
+                <div className="space-y-1.5 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <span className="text-sm">
+                      ${item.displayPrice.toFixed(2)}
+                    </span>
                   </div>
+                  <Combobox
+                    items={friends.map((f) => f.name)}
+                    multiple
+                    value={claimerIds.map(
+                      (id) => friends.find((f) => f._id === id)?.name ?? ""
+                    )}
+                    onValueChange={(names: string[]) => {
+                      handleClaimChange(
+                        names,
+                        claimerIds,
+                        item._id,
+                        item.unitIndex
+                      )
+                    }}
+                  >
+                    <ComboboxChips className="min-h-8 text-xs">
+                      <ComboboxValue>
+                        {claimerIds.map((id) => {
+                          const name =
+                            friends.find((f) => f._id === id)?.name ?? ""
+                          return <ComboboxChip key={id}>{name}</ComboboxChip>
+                        })}
+                      </ComboboxValue>
+                      <ComboboxChipsInput placeholder="Add people..." />
+                    </ComboboxChips>
+                    <ComboboxContent>
+                      <ComboboxEmpty>No one found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item) => (
+                          <ComboboxItem key={item} value={item}>
+                            {item}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
     </div>
   )
 }

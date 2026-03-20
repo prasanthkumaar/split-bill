@@ -222,7 +222,7 @@ test.describe.serial("Bill splitting flows", () => {
     await expect(
       page.getByRole("heading", { name: "Split Math Test" })
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Tag everyone to what they had.")).toBeVisible();
+    await expect(page.getByText("Tag everyone to what they had")).toBeVisible();
 
     // 13. Tag Alice on Steak via combobox
     const steakCombobox = page.getByPlaceholder("Add people...").first();
