@@ -29,16 +29,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@workspace/ui/components/drawer"
 import { Eye, EyeOff } from "lucide-react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Image from "next/image"
+import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 
 export default function SharePage() {
   const { shareId } = useParams<{ shareId: string }>()
   const data = useQuery(api.bills.getSharePageData, { shareId })
   const toggleClaim = useMutation(api.claims.toggle)
+  const setClaimers = useMutation(api.claims.setClaimers)
 
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const isDesktop = useMediaQuery("(min-width: 768px)")
+
+  // Drawer state for mobile
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerItem, setDrawerItem] = useState<{
+    lineItemId: Id<"lineItems">
+    unitIndex: number
+    name: string
+    price: number
+  } | null>(null)
+  const [drawerSelection, setDrawerSelection] = useState<string[]>([])
 
   if (data === undefined) {
     return (
@@ -124,6 +145,7 @@ export default function SharePage() {
     }))
   )
 
+  // Desktop: immediate save per change (used by combobox popover)
   const handleClaimChange = (
     newNames: string[],
     currentClaimerIds: string[],
@@ -140,6 +162,40 @@ export default function SharePage() {
     const friendId = friends.find((f) => f.name === changedName)?._id
     if (!friendId) return
     toggleClaim({ billId: bill._id, friendId, lineItemId, unitIndex })
+  }
+
+  // Mobile: open drawer with current selection
+  const openDrawer = (
+    lineItemId: Id<"lineItems">,
+    unitIndex: number,
+    name: string,
+    price: number,
+    currentClaimerIds: string[]
+  ) => {
+    setDrawerItem({ lineItemId, unitIndex, name, price })
+    setDrawerSelection([...currentClaimerIds])
+    setDrawerOpen(true)
+  }
+
+  // Mobile: save drawer selection
+  const saveDrawerSelection = () => {
+    if (!drawerItem) return
+    const friendIds = drawerSelection as Id<"friends">[]
+    setClaimers({
+      billId: bill._id,
+      lineItemId: drawerItem.lineItemId,
+      unitIndex: drawerItem.unitIndex,
+      friendIds,
+    })
+    setDrawerOpen(false)
+  }
+
+  const toggleDrawerFriend = (friendId: string) => {
+    setDrawerSelection((prev) =>
+      prev.includes(friendId)
+        ? prev.filter((id) => id !== friendId)
+        : [...prev, friendId]
+    )
   }
 
   return (
@@ -164,7 +220,7 @@ export default function SharePage() {
                 />
               </div>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
+                <Button variant="outline" size="lg" className="w-full">
                   View full receipt
                 </Button>
               </DialogTrigger>
@@ -253,11 +309,11 @@ export default function SharePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-bold">Split bill</CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Tag everyone to what they had
           </p>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="mt-1 space-y-3">
           {expandedItems.map((item) => {
             const claimKey = `${item._id}:${item.unitIndex}`
             const claimerIds = claimsByItem.get(claimKey) ?? []
@@ -266,53 +322,157 @@ export default function SharePage() {
               <div key={`${item._id}-${item.unitIndex}`}>
                 <div className="space-y-1 py-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{item.name}</span>
-                    <span className="text-sm">
+                    <span className="text-sm">{item.name}</span>
+                    <span className="text-sm font-medium">
                       ${item.displayPrice.toFixed(2)}
                     </span>
                   </div>
-                  <Combobox
-                    items={friends.map((f) => f.name)}
-                    multiple
-                    value={claimerIds.map(
-                      (id) => friends.find((f) => f._id === id)?.name ?? ""
-                    )}
-                    onValueChange={(names: string[]) => {
-                      handleClaimChange(
-                        names,
-                        claimerIds,
-                        item._id,
-                        item.unitIndex
-                      )
-                    }}
-                  >
-                    <ComboboxChips className="mt-2 min-h-8 text-xs">
-                      <ComboboxValue>
-                        {claimerIds.map((id) => {
+
+                  {isDesktop ? (
+                    <Combobox
+                      items={friends.map((f) => f.name)}
+                      multiple
+                      value={claimerIds.map(
+                        (id) => friends.find((f) => f._id === id)?.name ?? ""
+                      )}
+                      onValueChange={(names: string[]) => {
+                        handleClaimChange(
+                          names,
+                          claimerIds,
+                          item._id,
+                          item.unitIndex
+                        )
+                      }}
+                    >
+                      <ComboboxChips className="mt-2 min-h-9 text-xs">
+                        <ComboboxValue>
+                          {claimerIds.map((id) => {
+                            const name =
+                              friends.find((f) => f._id === id)?.name ?? ""
+                            return <ComboboxChip key={id}>{name}</ComboboxChip>
+                          })}
+                        </ComboboxValue>
+                        <ComboboxChipsInput
+                          placeholder={
+                            claimerIds.length > 0 ? "" : "Add people..."
+                          }
+                        />
+                      </ComboboxChips>
+                      <ComboboxContent>
+                        <ComboboxEmpty>No one found.</ComboboxEmpty>
+                        <ComboboxList>
+                          {(item) => (
+                            <ComboboxItem key={item} value={item}>
+                              {item}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  ) : (
+                    <button
+                      type="button"
+                      className="mt-2 flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-sm transition-colors dark:bg-input/30"
+                      onClick={() =>
+                        openDrawer(
+                          item._id,
+                          item.unitIndex,
+                          item.name,
+                          item.displayPrice,
+                          claimerIds
+                        )
+                      }
+                    >
+                      {claimerIds.length > 0 ? (
+                        claimerIds.map((id) => {
                           const name =
                             friends.find((f) => f._id === id)?.name ?? ""
-                          return <ComboboxChip key={id}>{name}</ComboboxChip>
-                        })}
-                      </ComboboxValue>
-                      <ComboboxChipsInput placeholder="Add people..." />
-                    </ComboboxChips>
-                    <ComboboxContent>
-                      <ComboboxEmpty>No one found.</ComboboxEmpty>
-                      <ComboboxList>
-                        {(item) => (
-                          <ComboboxItem key={item} value={item}>
-                            {item}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                          return (
+                            <span
+                              key={id}
+                              className="flex h-6 items-center rounded-sm bg-muted px-2 text-sm font-medium dark:bg-purple-400/20"
+                            >
+                              {name}
+                            </span>
+                          )
+                        })
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Add people...
+                        </span>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             )
           })}
         </CardContent>
       </Card>
+
+      {/* Mobile Drawer */}
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DrawerContent aria-describedby={undefined}>
+          <DrawerHeader className="pb-6">
+            <DrawerTitle className="text-lg">
+              {drawerItem?.name}
+            </DrawerTitle>
+            <p className="text-sm text-muted-foreground">
+              ${drawerItem?.price.toFixed(2)}
+            </p>
+          </DrawerHeader>
+          <div className="space-y-1.5 px-4 pb-2">
+            {friends.map((friend) => {
+              const isSelected = drawerSelection.includes(friend._id)
+              return (
+                <div
+                  key={friend._id}
+                  role="button"
+                  tabIndex={0}
+                  className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-4 py-3 text-left transition-colors active:bg-accent ${isSelected ? "bg-accent/50" : ""}`}
+                  onClick={() => toggleDrawerFriend(friend._id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      toggleDrawerFriend(friend._id)
+                    }
+                  }}
+                >
+                  <span className="text-base font-medium">{friend.name}</span>
+                  {isSelected ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-5.5 w-5.5"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="currentColor" className="text-primary" />
+                      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-5.5 w-5.5"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-muted-foreground/40" />
+                    </svg>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <DrawerFooter className="pb-8">
+            <Button size="lg" className="h-12 w-full text-base" onClick={saveDrawerSelection}>
+              Save
+            </Button>
+            <DrawerClose asChild>
+              <Button variant="ghost" size="lg" className="h-12 w-full text-base">
+                Cancel
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }

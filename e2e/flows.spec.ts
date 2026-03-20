@@ -233,15 +233,17 @@ test.describe.serial("Bill splitting flows", () => {
     // Alice subtotal $40, proportion = 40/60 = 2/3, extras = 10 * 2/3 = $6.67, total = $46.67
     await expect(page.getByText("$46.67").first()).toBeVisible({ timeout: 5_000 });
 
-    // 15. Tag Alice on Salad too
-    const saladCombobox = page.getByPlaceholder("Add people...").nth(1);
+    // 15. Tag Alice on Salad too (Steak placeholder gone, so Salad is now first)
+    const saladCombobox = page.getByPlaceholder("Add people...").first();
     await saladCombobox.fill("Alice");
     await page.getByRole("option", { name: "Alice" }).click();
     // Alice subtotal $60, proportion = 60/60 = 100%, extras $10, total $70
     await expect(page.getByText("$70.00").first()).toBeVisible({ timeout: 5_000 });
 
     // Tag Bob on Steak too (shared with Alice)
-    await steakCombobox.fill("Bob");
+    // Steak's placeholder is now empty, target its input via the toolbar
+    const steakInput = page.getByRole("toolbar").first().locator("input");
+    await steakInput.fill("Bob");
     await page.getByRole("option", { name: "Bob" }).click();
 
     // Verify split with shared item:
