@@ -144,8 +144,10 @@ export default function SharePage() {
 
   return (
     <div className="mx-auto max-w-2xl p-5">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{bill.name}</h1>
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="w-full text-center text-xl font-semibold">
+          {bill.name}
+        </h1>
       </div>
 
       {/* Receipt + Split Summary */}
