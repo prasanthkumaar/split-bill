@@ -241,7 +241,7 @@ export default function SharePage() {
             <div className="text-lg font-bold">Summary</div>
             {splits.some((s) => s.total > 0) && (
               <button
-                className="flex items-center gap-1 text-sm font-medium text-primary dark:text-purple-400"
+                className="flex items-center gap-1 text-sm font-medium text-primary dark:text-indigo-200"
                 onClick={() => setShowBreakdown(!showBreakdown)}
               >
                 {showBreakdown ? (
@@ -390,7 +390,7 @@ export default function SharePage() {
                           return (
                             <span
                               key={id}
-                              className="flex h-6 items-center rounded-sm bg-muted px-2 text-sm font-medium dark:bg-purple-400/20"
+                              className="flex h-6 items-center rounded-sm bg-muted px-2 text-sm font-medium dark:bg-indigo-400/20"
                             >
                               {name}
                             </span>
@@ -429,7 +429,7 @@ export default function SharePage() {
                   key={friend._id}
                   role="button"
                   tabIndex={0}
-                  className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-4 py-3 text-left transition-colors active:bg-accent ${isSelected ? "bg-accent/50" : ""}`}
+                  className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-4 py-3 text-left transition-colors active:bg-accent ${isSelected ? "bg-accent/50" : ""}`}
                   onClick={() => toggleDrawerFriend(friend._id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
