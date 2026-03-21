@@ -25,6 +25,7 @@ import {
 import { Separator } from "@workspace/ui/components/separator"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
@@ -37,8 +38,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@workspace/ui/components/drawer"
-import { Eye, EyeOff } from "lucide-react"
-import { useState, useCallback } from "react"
+import { Eye, EyeOff, XIcon } from "lucide-react"
+import { useState } from "react"
 import Image from "next/image"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 
@@ -199,19 +200,20 @@ export default function SharePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-5">
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className="w-full text-center text-xl font-semibold">
-          {bill.name}
-        </h1>
-      </div>
+    <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
+      <div className="md:sticky md:top-5 md:self-start md:max-h-[calc(100vh-2.5rem)] md:overflow-y-auto">
+        <div className="mb-5 flex items-center justify-between">
+          <h1 className="w-full text-center text-xl font-semibold md:text-left">
+            {bill.name}
+          </h1>
+        </div>
 
-      {/* Receipt + Split Summary */}
-      <Card className="mb-4">
-        <CardContent className="space-y-3 py-4">
+        {/* Receipt + Split Summary */}
+        <Card className="mb-4 pt-0 md:ring-0 md:shadow-none">
+        <CardContent className="space-y-3 py-4 md:px-0 md:py-0 md:pr-4">
           {receiptUrl && (
             <Dialog>
-              <div className="relative h-40 w-full overflow-hidden rounded-lg">
+              <div className="relative h-40 w-full overflow-hidden rounded-lg md:h-72">
                 <Image
                   src={receiptUrl}
                   alt="Receipt"
@@ -224,14 +226,24 @@ export default function SharePage() {
                   View full receipt
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[80vh] overflow-y-auto">
+              <DialogContent showCloseButton={false} className="w-[95vw]! sm:w-fit! max-w-[95vw]! p-0! gap-0! rounded-2xl! overflow-hidden">
                 <DialogTitle className="sr-only">Receipt</DialogTitle>
+                <DialogClose asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="absolute top-2 right-2 z-10 rounded-full bg-background/80 backdrop-blur-sm"
+                  >
+                    <XIcon />
+                    <span className="sr-only">Close</span>
+                  </Button>
+                </DialogClose>
                 <Image
                   src={receiptUrl}
                   alt="Receipt"
                   width={600}
                   height={800}
-                  className="w-full"
+                  className="max-h-[95vh] w-full sm:w-auto"
                 />
               </DialogContent>
             </Dialog>
@@ -304,6 +316,8 @@ export default function SharePage() {
           )}
         </CardContent>
       </Card>
+
+      </div>
 
       {/* Tagging */}
       <Card>
