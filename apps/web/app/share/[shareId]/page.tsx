@@ -209,7 +209,7 @@ export default function SharePage() {
         </div>
 
         {/* Receipt + Split Summary */}
-        <Card className="mb-4 pt-0 md:ring-0 md:shadow-none">
+        <Card className="mb-4 pt-0 md:bg-transparent md:ring-0 md:shadow-none md:border-none">
         <CardContent className="space-y-3 py-4 md:px-0 md:py-0 md:pr-4">
           {receiptUrl && (
             <Dialog>
