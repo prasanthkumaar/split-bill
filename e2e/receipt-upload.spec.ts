@@ -1,12 +1,10 @@
 import { test, expect } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 const TEST_EMAIL = "test+clerk_test@example.com"
 const TEST_OTP = "424242"
 
-test("Receipt OCR upload", async ({ page }) => {
-  test.setTimeout(120_000)
-
-  // Login
+async function signInAndCreateBill(page: Page, billName: string) {
   await page.goto("/")
   await page.waitForURL(/sign-in/, { timeout: 10_000 })
   await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
@@ -18,16 +16,92 @@ test("Receipt OCR upload", async ({ page }) => {
   await page
     .getByRole("textbox", { name: "Enter verification code" })
     .pressSequentially(TEST_OTP)
-  await expect(
-    page.getByRole("heading", { name: "Split Bill" })
-  ).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole("heading", { name: "Split Bill" })).toBeVisible({
+    timeout: 15_000,
+  })
 
-  // Create a bill
-  await page.getByPlaceholder("e.g. Dinner at Burnt Ends").fill("OCR Test")
+  await page.getByPlaceholder("e.g. Dinner at Burnt Ends").fill(billName)
   await page.getByRole("button", { name: "Create" }).click()
-  await expect(page.getByRole("heading", { name: "OCR Test" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: billName })).toBeVisible({
     timeout: 10_000,
   })
+}
+
+test("Receipt upload normalizes unsupported mobile image types", async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+
+  await signInAndCreateBill(page, "OCR MIME Test")
+
+  let receivedMimeType: string | null = null
+  await page.route("**/api/parse-receipt", async (route) => {
+    const body = JSON.parse(route.request().postData() ?? "{}") as {
+      mimeType?: string
+    }
+    receivedMimeType = body.mimeType ?? null
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ name: "Mobile Test Item", quantity: 1, unitPrice: 12.34 }],
+        tax: 0,
+        serviceCharge: 0,
+      }),
+    })
+  })
+
+  await page
+    .locator('input[type="file"]')
+    .evaluate<void, HTMLInputElement>(async (input) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = 400
+      canvas.height = 800
+
+      const context = canvas.getContext("2d")
+      if (!context) {
+        throw new Error("Failed to build test image")
+      }
+
+      context.fillStyle = "#ffffff"
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      context.fillStyle = "#111111"
+      context.font = "32px sans-serif"
+      context.fillText("MOBILE RECEIPT", 24, 60)
+      context.fillText("$12.34", 24, 120)
+
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/png")
+      })
+
+      if (!pngBlob) {
+        throw new Error("Failed to create test blob")
+      }
+
+      const file = new File([await pngBlob.arrayBuffer()], "receipt.heic")
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(file)
+      input.files = dataTransfer.files
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+
+  await expect(page.getByText("Processing receipt...")).toBeVisible({
+    timeout: 5_000,
+  })
+  await expect(page.getByText("Processing receipt...")).not.toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.locator('input[value="Mobile Test Item"]')).toBeVisible({
+    timeout: 10_000,
+  })
+  expect(receivedMimeType).toBe("image/jpeg")
+})
+
+test("Receipt OCR upload", async ({ page }) => {
+  test.setTimeout(120_000)
+
+  await signInAndCreateBill(page, "OCR Test")
 
   // Upload receipt
   const fileInput = page.locator('input[type="file"]')
