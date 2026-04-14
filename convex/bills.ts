@@ -5,6 +5,7 @@ import { assertBillOwner } from "./utils/access"
 import { BILL_STATUSES } from "./schema"
 
 export const list = query({
+  args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return []
@@ -15,7 +16,6 @@ export const list = query({
       .collect()
   },
 })
-
 
 export const create = mutation({
   args: {
@@ -45,9 +45,7 @@ export const update = mutation({
     tax: v.optional(v.number()),
     serviceCharge: v.optional(v.number()),
     imageId: v.optional(v.id("_storage")),
-    status: v.optional(
-      v.union(...BILL_STATUSES.map((s) => v.literal(s)))
-    ),
+    status: v.optional(v.union(...BILL_STATUSES.map((s) => v.literal(s)))),
   },
   handler: async (ctx, args) => {
     await assertBillOwner(ctx, args.id)
@@ -91,10 +89,13 @@ export const remove = mutation({
   },
 })
 
-export const generateUploadUrl = mutation(async (ctx) => {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) throw new Error("Not authenticated")
-  return await ctx.storage.generateUploadUrl()
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error("Not authenticated")
+    return await ctx.storage.generateUploadUrl()
+  },
 })
 
 export const getImageUrl = query({

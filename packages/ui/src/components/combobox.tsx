@@ -13,9 +13,14 @@ import {
 } from "@workspace/ui/components/input-group"
 import { ChevronDownIcon, XIcon, CheckIcon } from "lucide-react"
 
-const ChipsAnchorContext = React.createContext<React.MutableRefObject<HTMLDivElement | null> | null>(null)
+const ChipsAnchorContext =
+  React.createContext<React.MutableRefObject<HTMLDivElement | null> | null>(
+    null
+  )
 
-function Combobox(props: React.ComponentProps<typeof ComboboxPrimitive.Root>) {
+function Combobox<Value, Multiple extends boolean | undefined = false>(
+  props: ComboboxPrimitive.Root.Props<Value, Multiple>
+) {
   const anchorRef = React.useRef<HTMLDivElement | null>(null)
   return (
     <ChipsAnchorContext value={anchorRef}>
