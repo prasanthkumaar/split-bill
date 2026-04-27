@@ -105,6 +105,67 @@ export const setDone = mutation({
   },
 })
 
+export const applyBulkEdit = mutation({
+  args: {
+    billId: v.id("bills"),
+    assignments: v.array(
+      v.object({
+        lineItemId: v.id("lineItems"),
+        participantId: v.id("friends"),
+        unitIndex: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.billId)
+    const identity = await ctx.auth.getUserIdentity()
+    if (!bill || identity?.subject !== bill.ownerId) {
+      throw new Error("Not authorised")
+    }
+
+    const [lineItems, participants, claims] = await Promise.all([
+      ctx.db
+        .query("lineItems")
+        .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+        .collect(),
+      ctx.db
+        .query("friends")
+        .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+        .collect(),
+      ctx.db
+        .query("claims")
+        .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+        .collect(),
+    ])
+
+    const validatedAssignments = validateBulkEditAssignments({
+      assignments: args.assignments.map((assignment) => ({
+        lineItemId: assignment.lineItemId,
+        participantId: assignment.participantId,
+        unitIndex: assignment.unitIndex,
+      })),
+      lineItems: lineItems.map((lineItem) => ({
+        id: lineItem._id,
+        quantity: lineItem.quantity,
+      })),
+      participantIds: participants.map((participant) => participant._id),
+    })
+
+    for (const claim of claims) {
+      await ctx.db.delete(claim._id)
+    }
+
+    for (const assignment of validatedAssignments) {
+      await ctx.db.insert("claims", {
+        billId: args.billId,
+        friendId: assignment.participantId as Id<"friends">,
+        lineItemId: assignment.lineItemId as Id<"lineItems">,
+        unitIndex: assignment.unitIndex,
+      })
+    }
+  },
+})
+
 export const prepareShareSession = mutation({
   args: { shareId: v.string() },
   handler: async (ctx, args) => {
@@ -232,4 +293,76 @@ function getOwnerParticipantName(identity: UserIdentity | null) {
     identity.email?.split("@")[0]?.trim() ||
     "Owner"
   )
+}
+
+type BulkEditAssignment = {
+  lineItemId: string
+  participantId: string
+  unitIndex: number
+}
+
+type BulkEditLineItem = {
+  id: string
+  quantity: number
+}
+
+export function validateBulkEditAssignments({
+  assignments,
+  lineItems,
+  participantIds,
+}: {
+  assignments: BulkEditAssignment[]
+  lineItems: BulkEditLineItem[]
+  participantIds: string[]
+}) {
+  const allowedParticipantIds = new Set(participantIds)
+  const requiredUnits = lineItems.flatMap((lineItem) =>
+    Array.from({ length: lineItem.quantity }, (_, unitIndex) => ({
+      key: getBulkEditUnitKey(lineItem.id, unitIndex),
+      lineItemId: lineItem.id,
+      unitIndex,
+    }))
+  )
+  const requiredUnitByKey = new Map(
+    requiredUnits.map((unit) => [unit.key, unit])
+  )
+  const assignmentByKey = new Map<string, BulkEditAssignment>()
+
+  for (const assignment of assignments) {
+    const unitKey = getBulkEditUnitKey(
+      assignment.lineItemId,
+      assignment.unitIndex
+    )
+    if (!requiredUnitByKey.has(unitKey)) {
+      throw new Error(
+        `Bulk edit referenced an unknown unit: ${assignment.lineItemId}:${assignment.unitIndex}`
+      )
+    }
+
+    if (!allowedParticipantIds.has(assignment.participantId)) {
+      throw new Error("Bulk edit referenced an unknown participant")
+    }
+
+    if (assignmentByKey.has(unitKey)) {
+      throw new Error(
+        `Bulk edit repeated a unit: ${assignment.lineItemId}:${assignment.unitIndex}`
+      )
+    }
+
+    assignmentByKey.set(unitKey, assignment)
+  }
+
+  for (const unit of requiredUnits) {
+    if (!assignmentByKey.has(unit.key)) {
+      throw new Error(
+        `Bulk edit omitted a unit: ${unit.lineItemId}:${unit.unitIndex}`
+      )
+    }
+  }
+
+  return requiredUnits.map((unit) => assignmentByKey.get(unit.key)!)
+}
+
+function getBulkEditUnitKey(lineItemId: string, unitIndex: number) {
+  return `${lineItemId}:${unitIndex}`
 }
