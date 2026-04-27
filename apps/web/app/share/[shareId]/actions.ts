@@ -4,13 +4,19 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 import { generateText } from "ai"
 import { env } from "@/env"
 import {
+  buildDeterministicBulkEditResult,
   parseBulkEditResult,
   prepareBulkEditInput,
   type BulkEditInput,
+  type PreparedBulkEditInput,
 } from "./schema"
 
 export async function generateBulkEdit(input: BulkEditInput) {
   const preparedInput = prepareBulkEditInput(input)
+  const deterministicResult = buildDeterministicBulkEditResult(preparedInput)
+  if (deterministicResult) {
+    return deterministicResult
+  }
 
   const anthropic = createAnthropic({
     baseURL: env.ANTHROPIC_BASE_URL,
@@ -35,7 +41,7 @@ export async function generateBulkEdit(input: BulkEditInput) {
   return parseBulkEditResult(preparedInput, result.text)
 }
 
-function buildBulkEditPrompt(input: BulkEditInput) {
+function buildBulkEditPrompt(input: PreparedBulkEditInput) {
   const participantList = input.participants
     .map((participant) => `- ${participant.name}`)
     .join("\n")
@@ -45,8 +51,17 @@ function buildBulkEditPrompt(input: BulkEditInput) {
         `- ${lineItem.name} | lineItemId=${lineItem.id} | quantity=${lineItem.quantity} | unitPrice=${lineItem.unitPrice.toFixed(2)}`
     )
     .join("\n")
+  const currentAssignmentList = input.currentAssignments
+    .map((assignment) => {
+      const participantNames =
+        assignment.participantNames.length > 0
+          ? assignment.participantNames.join(", ")
+          : "(unclaimed)"
+      return `- lineItemId=${assignment.lineItemId} | unitIndex=${assignment.unitIndex} | claimers=${participantNames}`
+    })
+    .join("\n")
 
-  return `You are assigning every bill unit to exactly one participant.
+  return `You are assigning claimers to every bill unit.
 
 Return ONLY JSON with this exact shape:
 {
@@ -54,7 +69,7 @@ Return ONLY JSON with this exact shape:
     {
       "lineItemId": "line item id",
       "unitIndex": 0,
-      "participantName": "participant name"
+      "participantNames": ["participant name"]
     }
   ]
 }
@@ -68,9 +83,14 @@ ${participantList}
 Line items:
 ${lineItemList}
 
+Current unit assignments:
+${currentAssignmentList || "- none"}
+
 Rules:
 - Every unit must appear exactly once.
 - unitIndex is zero-based.
+- participantNames may be empty when nobody should claim that unit.
+- participantNames may contain more than one participant when the unit is shared.
 - Use only the provided participant names.
 - Use only the provided lineItemId values.
 - No markdown fences.

@@ -111,7 +111,7 @@ export const applyBulkEdit = mutation({
     assignments: v.array(
       v.object({
         lineItemId: v.id("lineItems"),
-        participantId: v.id("friends"),
+        participantIds: v.array(v.id("friends")),
         unitIndex: v.number(),
       })
     ),
@@ -141,7 +141,7 @@ export const applyBulkEdit = mutation({
     const validatedAssignments = validateBulkEditAssignments({
       assignments: args.assignments.map((assignment) => ({
         lineItemId: assignment.lineItemId,
-        participantId: assignment.participantId,
+        participantIds: assignment.participantIds,
         unitIndex: assignment.unitIndex,
       })),
       lineItems: lineItems.map((lineItem) => ({
@@ -156,12 +156,14 @@ export const applyBulkEdit = mutation({
     }
 
     for (const assignment of validatedAssignments) {
-      await ctx.db.insert("claims", {
-        billId: args.billId,
-        friendId: assignment.participantId as Id<"friends">,
-        lineItemId: assignment.lineItemId as Id<"lineItems">,
-        unitIndex: assignment.unitIndex,
-      })
+      for (const participantId of assignment.participantIds) {
+        await ctx.db.insert("claims", {
+          billId: args.billId,
+          friendId: participantId as Id<"friends">,
+          lineItemId: assignment.lineItemId as Id<"lineItems">,
+          unitIndex: assignment.unitIndex,
+        })
+      }
     }
   },
 })
@@ -297,7 +299,7 @@ function getOwnerParticipantName(identity: UserIdentity | null) {
 
 type BulkEditAssignment = {
   lineItemId: string
-  participantId: string
+  participantIds: string[]
   unitIndex: number
 }
 
@@ -339,14 +341,23 @@ export function validateBulkEditAssignments({
       )
     }
 
-    if (!allowedParticipantIds.has(assignment.participantId)) {
-      throw new Error("Bulk edit referenced an unknown participant")
-    }
-
     if (assignmentByKey.has(unitKey)) {
       throw new Error(
         `Bulk edit repeated a unit: ${assignment.lineItemId}:${assignment.unitIndex}`
       )
+    }
+
+    const seenParticipantIds = new Set<string>()
+    for (const participantId of assignment.participantIds) {
+      if (!allowedParticipantIds.has(participantId)) {
+        throw new Error("Bulk edit referenced an unknown participant")
+      }
+
+      if (seenParticipantIds.has(participantId)) {
+        throw new Error("Bulk edit repeated a participant for a unit")
+      }
+
+      seenParticipantIds.add(participantId)
     }
 
     assignmentByKey.set(unitKey, assignment)
