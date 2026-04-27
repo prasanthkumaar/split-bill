@@ -1,13 +1,36 @@
+import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
+
 type ShareHeaderProps = {
   name: string
+  currentParticipantName: string | null
+  currentParticipantRole: "owner" | "guest" | null
+  onChangeParticipant: () => void
 }
 
-export function ShareHeader({ name }: ShareHeaderProps) {
+export function ShareHeader({
+  name,
+  currentParticipantName,
+  currentParticipantRole,
+  onChangeParticipant,
+}: ShareHeaderProps) {
   return (
-    <div className="mb-5 flex items-center justify-between">
-      <h1 className="w-full text-center text-xl font-semibold md:text-left">
-        {name}
-      </h1>
+    <div className="mb-5 space-y-3">
+      <h1 className="text-center text-xl font-semibold md:text-left">{name}</h1>
+      {currentParticipantName ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Reviewing as</p>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{currentParticipantName}</span>
+              {currentParticipantRole === "owner" ? <Badge>Owner</Badge> : null}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={onChangeParticipant}>
+            Change
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

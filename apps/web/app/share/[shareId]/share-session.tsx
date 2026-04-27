@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useAuth, useClerk } from "@clerk/nextjs"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 import { ShareHeader } from "./_components/share-header"
+import { IdentityDialog } from "./_components/identity-dialog"
 import { ShareReceiptCard } from "./_components/share-receipt-card"
 import { SplitList } from "./_components/split-list"
 import { ItemSplitDialog } from "./_components/item-split-dialog"
@@ -22,7 +24,10 @@ type DrawerItem = {
 } | null
 
 export function ShareSession({ shareId }: ShareSessionProps) {
+  const { isLoaded, userId } = useAuth()
+  const clerk = useClerk()
   const data = useQuery(api.sharing.getShareSession, { shareId })
+  const prepareShareSession = useMutation(api.sharing.prepareShareSession)
   const setClaimers = useMutation(api.sharing.setClaimers)
 
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -30,14 +35,55 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerItem, setDrawerItem] = useState<DrawerItem>(null)
   const [drawerSelection, setDrawerSelection] = useState<Id<"friends">[]>([])
+  const [preparedShareId, setPreparedShareId] = useState<string | null>(null)
+  const [prepareError, setPrepareError] = useState<string | null>(null)
+  const [currentParticipantId, setCurrentParticipantId] =
+    useState<Id<"friends"> | null>(null)
 
-  if (data === undefined) {
-    return (
-      <div className="flex min-h-svh items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    setPreparedShareId(null)
+    setPrepareError(null)
+    setCurrentParticipantId(null)
+  }, [shareId])
+
+  useEffect(() => {
+    if (
+      data === undefined ||
+      data === null ||
+      !isLoaded ||
+      preparedShareId === shareId
+    ) {
+      return
+    }
+
+    let cancelled = false
+
+    prepareShareSession({ shareId })
+      .then((result) => {
+        if (cancelled) {
+          return
+        }
+
+        setCurrentParticipantId(result?.currentParticipantId ?? null)
+        setPreparedShareId(shareId)
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return
+        }
+
+        setPrepareError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load share session"
+        )
+        setPreparedShareId(shareId)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [data, isLoaded, prepareShareSession, preparedShareId, shareId])
 
   if (data === null) {
     return (
@@ -47,7 +93,23 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     )
   }
 
-  const { bill, lineItems, friends, claims, receiptUrl } = data
+  if (data === undefined || !isLoaded || preparedShareId !== shareId) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
+
+  if (prepareError) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <p className="text-muted-foreground">{prepareError}</p>
+      </div>
+    )
+  }
+
+  const { bill, lineItems, participants, claims, receiptUrl } = data
 
   const subtotal = lineItems.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
@@ -62,10 +124,10 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     if (!claimsByItem.has(key)) {
       claimsByItem.set(key, [])
     }
-    claimsByItem.get(key)!.push(claim.friendId)
+    claimsByItem.get(key)!.push(claim.participantId)
   }
 
-  const friendTotals = new Map<
+  const participantTotals = new Map<
     string,
     {
       name: string
@@ -74,9 +136,9 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     }
   >()
 
-  for (const friend of friends) {
-    friendTotals.set(friend._id, {
-      name: friend.name,
+  for (const participant of participants) {
+    participantTotals.set(participant.id, {
+      name: participant.name,
       items: [],
       subtotal: 0,
     })
@@ -90,8 +152,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       }
 
       const perPerson = item.unitPrice / claimers.length
-      for (const friendId of claimers) {
-        const entry = friendTotals.get(friendId)
+      for (const participantId of claimers) {
+        const entry = participantTotals.get(participantId)
         if (!entry) {
           continue
         }
@@ -102,25 +164,28 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     }
   }
 
-  const claimedSubtotal = Array.from(friendTotals.values()).reduce(
-    (sum, friendTotal) => sum + friendTotal.subtotal,
+  const claimedSubtotal = Array.from(participantTotals.values()).reduce(
+    (sum, participantTotal) => sum + participantTotal.subtotal,
     0
   )
-  const assignedExtras = subtotal > 0 ? extras * (claimedSubtotal / subtotal) : 0
+  const assignedExtras =
+    subtotal > 0 ? extras * (claimedSubtotal / subtotal) : 0
   const unclaimed = subtotal - claimedSubtotal + (extras - assignedExtras)
-  const splits = Array.from(friendTotals.entries()).map(([id, friendTotal]) => {
-    const proportion = subtotal > 0 ? friendTotal.subtotal / subtotal : 0
-    const extraShare = extras * proportion
+  const splits = Array.from(participantTotals.entries()).map(
+    ([id, participantTotal]) => {
+      const proportion = subtotal > 0 ? participantTotal.subtotal / subtotal : 0
+      const extraShare = extras * proportion
 
-    return {
-      id,
-      name: friendTotal.name,
-      items: friendTotal.items,
-      subtotal: friendTotal.subtotal,
-      extras: extraShare,
-      total: friendTotal.subtotal + extraShare,
+      return {
+        id,
+        name: participantTotal.name,
+        items: participantTotal.items,
+        subtotal: participantTotal.subtotal,
+        extras: extraShare,
+        total: participantTotal.subtotal + extraShare,
+      }
     }
-  })
+  )
 
   const expandedItems = lineItems.flatMap((item) =>
     Array.from({ length: item.quantity }, (_, unitIndex) => ({
@@ -129,6 +194,25 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       displayPrice: item.unitPrice,
     }))
   )
+
+  const participantOptions = getParticipantOptions(participants)
+  const participantLabelById = new Map(
+    participantOptions.map((participant) => [participant.id, participant.label])
+  )
+  const currentParticipant =
+    currentParticipantId === null
+      ? null
+      : (participants.find(
+          (participant) => participant.id === currentParticipantId
+        ) ?? null)
+
+  if (currentParticipantId !== null && !currentParticipant) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
 
   const handleClaimChange = (
     newIds: Id<"friends">[],
@@ -141,7 +225,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
           billId: bill._id,
           lineItemId,
           unitIndex,
-          friendIds: newIds,
+          participantIds: newIds,
         })
       } catch (error) {
         console.error("Failed to update claim:", error)
@@ -172,7 +256,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
           billId: bill._id,
           lineItemId: drawerItem.lineItemId,
           unitIndex: drawerItem.unitIndex,
-          friendIds: drawerSelection,
+          participantIds: drawerSelection,
         })
         setDrawerOpen(false)
       } catch (error) {
@@ -181,18 +265,38 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     })()
   }
 
-  const toggleDrawerFriend = (friendId: Id<"friends">) => {
+  const toggleDrawerParticipant = (participantId: Id<"friends">) => {
     setDrawerSelection((currentSelection) =>
-      currentSelection.includes(friendId)
-        ? currentSelection.filter((id) => id !== friendId)
-        : [...currentSelection, friendId]
+      currentSelection.includes(participantId)
+        ? currentSelection.filter((id) => id !== participantId)
+        : [...currentSelection, participantId]
     )
+  }
+
+  const handleSelectParticipant = async (participantId: Id<"friends">) => {
+    const participant = participants.find((entry) => entry.id === participantId)
+
+    if (!participant) {
+      return
+    }
+
+    if (participant.role === "owner" && userId !== bill.ownerId) {
+      await clerk.redirectToSignIn({ redirectUrl: `/share/${shareId}` })
+      return
+    }
+
+    setCurrentParticipantId(participant.id)
   }
 
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
       <div className="md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
-        <ShareHeader name={bill.name} />
+        <ShareHeader
+          name={bill.name}
+          currentParticipantName={currentParticipant?.name ?? null}
+          currentParticipantRole={currentParticipant?.role ?? null}
+          onChangeParticipant={() => setCurrentParticipantId(null)}
+        />
         <ShareReceiptCard
           receiptUrl={receiptUrl}
           splits={splits}
@@ -203,24 +307,75 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         />
       </div>
 
-      <SplitList
-        expandedItems={expandedItems}
-        claimsByItem={claimsByItem}
-        friends={friends}
-        isDesktop={isDesktop}
-        onClaimIdsChange={handleClaimChange}
-        onOpenItemSplit={openDrawer}
+      {currentParticipant ? (
+        <SplitList
+          expandedItems={expandedItems}
+          claimsByItem={claimsByItem}
+          participants={participantOptions}
+          participantLabelById={participantLabelById}
+          isDesktop={isDesktop}
+          onClaimIdsChange={handleClaimChange}
+          onOpenItemSplit={openDrawer}
+        />
+      ) : null}
+
+      <IdentityDialog
+        open={currentParticipant === null}
+        participants={participants}
+        onSelectParticipant={handleSelectParticipant}
       />
 
-      <ItemSplitDialog
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        item={drawerItem}
-        friends={friends}
-        selectedFriendIds={drawerSelection}
-        onToggleFriend={toggleDrawerFriend}
-        onSave={saveDrawerSelection}
-      />
+      {currentParticipant ? (
+        <ItemSplitDialog
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          item={drawerItem}
+          participants={participants}
+          selectedParticipantIds={drawerSelection}
+          onToggleParticipant={toggleDrawerParticipant}
+          onSave={saveDrawerSelection}
+        />
+      ) : null}
     </div>
   )
+}
+
+function getParticipantOptions(
+  participants: {
+    id: Id<"friends">
+    name: string
+    role: "owner" | "guest"
+  }[]
+) {
+  const counts = new Map<string, number>()
+  for (const participant of participants) {
+    counts.set(participant.name, (counts.get(participant.name) ?? 0) + 1)
+  }
+
+  const nextIndexByName = new Map<string, number>()
+
+  return participants.map((participant) => {
+    const duplicateCount = counts.get(participant.name) ?? 0
+    const nextIndex = (nextIndexByName.get(participant.name) ?? 0) + 1
+    nextIndexByName.set(participant.name, nextIndex)
+
+    if (participant.role === "owner") {
+      return {
+        ...participant,
+        label: `${participant.name} (owner)`,
+      }
+    }
+
+    if (duplicateCount > 1) {
+      return {
+        ...participant,
+        label: `${participant.name} (${nextIndex})`,
+      }
+    }
+
+    return {
+      ...participant,
+      label: participant.name,
+    }
+  })
 }
