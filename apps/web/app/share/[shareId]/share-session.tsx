@@ -320,13 +320,6 @@ export function ShareSession({ shareId }: ShareSessionProps) {
           total={total}
           unclaimed={unclaimed}
         />
-        {currentParticipant ? (
-          <ReviewStatusCard
-            participants={participants}
-            currentParticipantId={currentParticipant.id}
-            onToggleDone={handleToggleDone}
-          />
-        ) : null}
       </div>
 
       <div className="space-y-4">
@@ -335,6 +328,14 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             currentParticipantName={currentParticipant.name}
             currentParticipantRole={currentParticipant.role}
             onChangeParticipant={() => setIdentityDialogOpen(true)}
+          />
+        ) : null}
+
+        {currentParticipant ? (
+          <ReviewStatusCard
+            participants={participants}
+            currentParticipantId={currentParticipant.id}
+            onToggleDone={handleToggleDone}
           />
         ) : null}
 
