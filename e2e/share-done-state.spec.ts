@@ -103,7 +103,10 @@ test("owner can mark done without affecting owner entry", async ({ page }) => {
   const shareUrl = await createSharedBill(page, "Done Owner Test", ["Bob"])
 
   await page.goto(shareUrl)
-  await expect(page.getByText("Reviewing as")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText("Review status")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId("current-participant-trigger")).toHaveText(
+    "Owner"
+  )
   await expect(page.getByTestId("done-toggle")).toHaveText("Mark done")
 
   await page.getByTestId("done-toggle").click()

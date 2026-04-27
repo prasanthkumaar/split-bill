@@ -6,7 +6,6 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
-import { ShareHeader } from "./_components/share-header"
 import { IdentityDialog } from "./_components/identity-dialog"
 import { ShareReceiptCard } from "./_components/share-receipt-card"
 import { ReviewStatusCard } from "./_components/review-status-card"
@@ -324,17 +323,10 @@ export function ShareSession({ shareId }: ShareSessionProps) {
 
       <div className="space-y-4">
         {currentParticipant ? (
-          <ShareHeader
-            currentParticipantName={currentParticipant.name}
-            currentParticipantRole={currentParticipant.role}
-            onChangeParticipant={() => setIdentityDialogOpen(true)}
-          />
-        ) : null}
-
-        {currentParticipant ? (
           <ReviewStatusCard
             participants={participants}
             currentParticipantId={currentParticipant.id}
+            onChangeParticipant={() => setIdentityDialogOpen(true)}
             onToggleDone={handleToggleDone}
           />
         ) : null}
