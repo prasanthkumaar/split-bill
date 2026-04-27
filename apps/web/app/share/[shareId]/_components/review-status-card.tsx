@@ -52,6 +52,13 @@ export function ReviewStatusCard({
     return null
   }
 
+  const displayParticipants: typeof participants = [
+    currentParticipant,
+    ...participants.filter(
+      (participant) => participant.id !== currentParticipantId
+    ),
+  ]
+
   return (
     <section className="space-y-4 md:pr-4">
       <div className="space-y-3">
@@ -103,7 +110,7 @@ export function ReviewStatusCard({
       </div>
 
       <div className="space-y-3">
-          {participants.map((participant) => {
+          {displayParticipants.map((participant) => {
             const split = splitByParticipantId.get(participant.id)
 
             return (
