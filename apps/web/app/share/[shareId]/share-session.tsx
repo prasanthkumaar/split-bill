@@ -37,12 +37,14 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const [drawerSelection, setDrawerSelection] = useState<Id<"friends">[]>([])
   const [preparedShareId, setPreparedShareId] = useState<string | null>(null)
   const [prepareError, setPrepareError] = useState<string | null>(null)
+  const [identityDialogOpen, setIdentityDialogOpen] = useState(false)
   const [currentParticipantId, setCurrentParticipantId] =
     useState<Id<"friends"> | null>(null)
 
   useEffect(() => {
     setPreparedShareId(null)
     setPrepareError(null)
+    setIdentityDialogOpen(false)
     setCurrentParticipantId(null)
   }, [shareId])
 
@@ -65,6 +67,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         }
 
         setCurrentParticipantId(result?.currentParticipantId ?? null)
+        setIdentityDialogOpen(false)
         setPreparedShareId(shareId)
       })
       .catch((error) => {
@@ -286,6 +289,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     }
 
     setCurrentParticipantId(participant.id)
+    setIdentityDialogOpen(false)
   }
 
   return (
@@ -299,7 +303,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
           <ShareHeader
             currentParticipantName={currentParticipant.name}
             currentParticipantRole={currentParticipant.role}
-            onChangeParticipant={() => setCurrentParticipantId(null)}
+            onChangeParticipant={() => setIdentityDialogOpen(true)}
           />
         </div>
       ) : null}
@@ -330,7 +334,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       ) : null}
 
       <IdentityDialog
-        open={currentParticipant === null}
+        open={identityDialogOpen || currentParticipant === null}
         participants={participants}
         onSelectParticipant={handleSelectParticipant}
       />
