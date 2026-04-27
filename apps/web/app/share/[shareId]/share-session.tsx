@@ -290,13 +290,21 @@ export function ShareSession({ shareId }: ShareSessionProps) {
 
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
-      <div className="md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
-        <ShareHeader
-          name={bill.name}
-          currentParticipantName={currentParticipant?.name ?? null}
-          currentParticipantRole={currentParticipant?.role ?? null}
-          onChangeParticipant={() => setCurrentParticipantId(null)}
-        />
+      <h1 className="mb-5 text-center text-xl font-semibold md:col-start-1 md:row-start-1 md:mb-0 md:text-left">
+        {bill.name}
+      </h1>
+
+      {currentParticipant ? (
+        <div className="mb-5 md:col-start-2 md:row-start-1 md:mb-0">
+          <ShareHeader
+            currentParticipantName={currentParticipant.name}
+            currentParticipantRole={currentParticipant.role}
+            onChangeParticipant={() => setCurrentParticipantId(null)}
+          />
+        </div>
+      ) : null}
+
+      <div className="md:col-start-1 md:row-start-2 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
         <ShareReceiptCard
           receiptUrl={receiptUrl}
           splits={splits}
@@ -308,15 +316,17 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       </div>
 
       {currentParticipant ? (
-        <SplitList
-          expandedItems={expandedItems}
-          claimsByItem={claimsByItem}
-          participants={participantOptions}
-          participantLabelById={participantLabelById}
-          isDesktop={isDesktop}
-          onClaimIdsChange={handleClaimChange}
-          onOpenItemSplit={openDrawer}
-        />
+        <div className="md:col-start-2 md:row-start-2">
+          <SplitList
+            expandedItems={expandedItems}
+            claimsByItem={claimsByItem}
+            participants={participantOptions}
+            participantLabelById={participantLabelById}
+            isDesktop={isDesktop}
+            onClaimIdsChange={handleClaimChange}
+            onOpenItemSplit={openDrawer}
+          />
+        </div>
       ) : null}
 
       <IdentityDialog
