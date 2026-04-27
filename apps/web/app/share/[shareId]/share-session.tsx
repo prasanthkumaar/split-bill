@@ -11,6 +11,7 @@ import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 import { IdentityDialog } from "./_components/identity-dialog"
 import { ShareReceiptCard } from "./_components/share-receipt-card"
 import { ReviewStatusCard } from "./_components/review-status-card"
+import { OwnerBulkEdit } from "./_components/owner-bulk-edit"
 import { SplitList } from "./_components/split-list"
 import { ItemSplitDialog } from "./_components/item-split-dialog"
 
@@ -204,9 +205,23 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   )
 
   const participantOptions = getParticipantOptions(participants)
+  const participantNameById = new Map(
+    participants.map((participant) => [participant.id, participant.name])
+  )
   const participantLabelById = new Map(
     participantOptions.map((participant) => [participant.id, participant.label])
   )
+  const currentAssignments = expandedItems.map((item) => ({
+    lineItemId: item._id,
+    unitIndex: item.unitIndex,
+    participantNames: (claimsByItem.get(`${item._id}:${item.unitIndex}`) ?? [])
+      .map((participantId) =>
+        participantNameById.get(participantId as Id<"friends">)
+      )
+      .filter((participantName): participantName is string =>
+        Boolean(participantName)
+      ),
+  }))
   const currentParticipant =
     currentParticipantId === null
       ? null
@@ -352,6 +367,17 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             participantLabelById={participantLabelById}
             headerActions={
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {currentParticipant.role === "owner" &&
+                data.viewerIsOwner &&
+                lineItems.length > 0 &&
+                participants.length > 0 ? (
+                  <OwnerBulkEdit
+                    billId={bill._id}
+                    lineItems={lineItems}
+                    participants={participants}
+                    currentAssignments={currentAssignments}
+                  />
+                ) : null}
                 <Button
                   data-testid="current-participant-trigger"
                   variant="outline"
