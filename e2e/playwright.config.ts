@@ -18,6 +18,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev --workspace=apps/web",
+    cwd: process.cwd(),
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     env: {
