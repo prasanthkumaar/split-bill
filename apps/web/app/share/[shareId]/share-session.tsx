@@ -39,6 +39,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const [preparedShareId, setPreparedShareId] = useState<string | null>(null)
   const [prepareError, setPrepareError] = useState<string | null>(null)
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false)
+  const [isTogglingDone, setIsTogglingDone] = useState(false)
   const [currentParticipantId, setCurrentParticipantId] =
     useState<Id<"friends"> | null>(null)
 
@@ -298,10 +299,13 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       return
     }
 
-    setDone({
+    setIsTogglingDone(true)
+    void setDone({
       billId: bill._id,
       participantId: currentParticipant.id,
       done: currentParticipant.doneAt === null,
+    }).finally(() => {
+      setIsTogglingDone(false)
     })
   }
 
@@ -313,11 +317,6 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         </h1>
         <ShareReceiptCard
           receiptUrl={receiptUrl}
-          splits={splits}
-          showBreakdown={showBreakdown}
-          onToggleBreakdown={() => setShowBreakdown((current) => !current)}
-          total={total}
-          unclaimed={unclaimed}
         />
       </div>
 
@@ -325,9 +324,15 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         {currentParticipant ? (
           <ReviewStatusCard
             participants={participants}
+            splits={splits}
             currentParticipantId={currentParticipant.id}
+            isSaving={isTogglingDone}
+            showBreakdown={showBreakdown}
+            onToggleBreakdown={() => setShowBreakdown((current) => !current)}
             onChangeParticipant={() => setIdentityDialogOpen(true)}
             onToggleDone={handleToggleDone}
+            total={total}
+            unclaimed={unclaimed}
           />
         ) : null}
 

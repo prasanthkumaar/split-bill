@@ -70,10 +70,10 @@ test("guest done state persists across refresh and does not block tagging", asyn
   const { context, page: guestPage } = await openGuestPage(browser, shareUrl)
 
   await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Mark done")
+  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Review now")
 
   await guestPage.getByTestId("done-toggle").click()
-  await expect(guestPage.getByText("1 of 2 done")).toBeVisible()
+  await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
   await expect(
     guestPage.getByTestId("review-participant").first()
   ).toContainText("Bob")
@@ -82,19 +82,19 @@ test("guest done state persists across refresh and does not block tagging", asyn
   await laksaCombobox.fill("Bob")
   await guestPage.getByRole("option", { name: "Bob" }).click()
   await expect(guestPage.getByText("$18.00").first()).toBeVisible()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Mark not done")
+  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
 
   await guestPage.reload()
   await expect(guestPage.getByText("Who are you?")).toBeVisible({
     timeout: 10_000,
   })
   await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByText("1 of 2 done")).toBeVisible()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Mark not done")
+  await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
+  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
   await expect(guestPage.getByText("$18.00").first()).toBeVisible()
 
   await guestPage.getByTestId("done-toggle").click()
-  await expect(guestPage.getByText("0 of 2 done")).toBeVisible()
+  await expect(guestPage.getByText("0 of 2 reviewed")).toBeVisible()
 
   await context.close()
 })
@@ -103,18 +103,19 @@ test("owner can mark done without affecting owner entry", async ({ page }) => {
   const shareUrl = await createSharedBill(page, "Done Owner Test", ["Bob"])
 
   await page.goto(shareUrl)
-  await expect(page.getByText("Review status")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText("Summary")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText("0 of 2 reviewed")).toBeVisible()
   await expect(page.getByTestId("current-participant-trigger")).toHaveText(
     "Owner"
   )
-  await expect(page.getByTestId("done-toggle")).toHaveText("Mark done")
+  await expect(page.getByTestId("done-toggle")).toHaveText("Review now")
 
   await page.getByTestId("done-toggle").click()
-  await expect(page.getByText("1 of 2 done")).toBeVisible()
+  await expect(page.getByText("1 of 2 reviewed")).toBeVisible()
   await expect(page.getByTestId("review-participant").first()).toContainText(
     "You"
   )
   await expect(page.getByTestId("review-participant").first()).toContainText(
-    "Done"
+    "Reviewed"
   )
 })
