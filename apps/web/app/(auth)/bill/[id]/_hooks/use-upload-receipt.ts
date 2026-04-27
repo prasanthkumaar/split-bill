@@ -2,7 +2,7 @@ import { useMutation as useConvexMutation } from "convex/react"
 import { useMutation } from "@tanstack/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import type { ParseReceiptResponse } from "@/app/api/parse-receipt/schema"
+import type { ParseReceiptResult } from "../schema"
 
 const SUPPORTED_RECEIPT_MIME_TYPES = new Set([
   "image/jpeg",
@@ -32,7 +32,7 @@ export function useUploadReceipt(billId: Id<"bills">) {
       await updateBill({ id: billId, imageId: storageId })
 
       const imageBase64 = await toBase64(normalizedFile)
-      const parsed = await parseReceipt(imageBase64, normalizedFile.type)
+      const parsed = await requestReceiptParse(imageBase64, normalizedFile.type)
 
       if (parsed.items?.length) {
         await replaceAllItems({ billId, items: parsed.items })
@@ -150,15 +150,19 @@ function toJpegFilename(fileName: string) {
   return trimmedFileName.replace(/\.[^.]+$/, "") + ".jpg"
 }
 
-async function parseReceipt(
+async function requestReceiptParse(
   imageBase64: string,
   mimeType: string
-): Promise<ParseReceiptResponse> {
+): Promise<ParseReceiptResult> {
   const res = await fetch("/api/parse-receipt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ imageBase64, mimeType }),
   })
-  if (!res.ok) throw new Error("Failed to parse receipt")
+
+  if (!res.ok) {
+    throw new Error("Failed to parse receipt")
+  }
+
   return res.json()
 }
