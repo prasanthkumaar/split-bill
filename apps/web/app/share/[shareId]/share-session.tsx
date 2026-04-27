@@ -293,22 +293,11 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:items-start md:gap-4">
-      <h1 className="mb-5 text-center text-xl font-semibold md:col-start-1 md:row-start-1 md:mb-0 md:text-left">
-        {bill.name}
-      </h1>
-
-      {currentParticipant ? (
-        <div className="mb-5 md:col-start-2 md:row-start-1 md:mb-0">
-          <ShareHeader
-            currentParticipantName={currentParticipant.name}
-            currentParticipantRole={currentParticipant.role}
-            onChangeParticipant={() => setIdentityDialogOpen(true)}
-          />
-        </div>
-      ) : null}
-
-      <div className="md:col-start-1 md:row-start-2 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
+    <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
+      <div className="space-y-4 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
+        <h1 className="text-center text-xl font-semibold md:text-left">
+          {bill.name}
+        </h1>
         <ShareReceiptCard
           receiptUrl={receiptUrl}
           splits={splits}
@@ -319,8 +308,16 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         />
       </div>
 
-      {currentParticipant ? (
-        <div className="md:col-start-2 md:row-start-2">
+      <div className="space-y-4">
+        {currentParticipant ? (
+          <ShareHeader
+            currentParticipantName={currentParticipant.name}
+            currentParticipantRole={currentParticipant.role}
+            onChangeParticipant={() => setIdentityDialogOpen(true)}
+          />
+        ) : null}
+
+        {currentParticipant ? (
           <SplitList
             expandedItems={expandedItems}
             claimsByItem={claimsByItem}
@@ -330,8 +327,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             onClaimIdsChange={handleClaimChange}
             onOpenItemSplit={openDrawer}
           />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <IdentityDialog
         open={identityDialogOpen || currentParticipant === null}
