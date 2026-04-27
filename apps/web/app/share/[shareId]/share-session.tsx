@@ -315,12 +315,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         <h1 className="text-center text-xl font-semibold md:text-left">
           {bill.name}
         </h1>
-        <ShareReceiptCard
-          receiptUrl={receiptUrl}
-        />
-      </div>
-
-      <div className="space-y-4">
+        <ShareReceiptCard receiptUrl={receiptUrl} />
         {currentParticipant ? (
           <ReviewStatusCard
             participants={participants}
@@ -335,7 +330,9 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             unclaimed={unclaimed}
           />
         ) : null}
+      </div>
 
+      <div className="space-y-4">
         {currentParticipant ? (
           <SplitList
             expandedItems={expandedItems}

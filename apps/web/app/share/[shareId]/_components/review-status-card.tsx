@@ -2,12 +2,6 @@ import type { Id } from "@convex/_generated/dataModel"
 import { ChevronDown, Eye, EyeOff } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 
 type ReviewStatusCardProps = {
@@ -59,11 +53,11 @@ export function ReviewStatusCard({
   }
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="space-y-3 pb-3">
+    <section className="space-y-4 md:pr-4">
+      <div className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-bold">Summary</CardTitle>
+            <h2 className="text-lg font-bold">Summary</h2>
             <p className="text-sm text-muted-foreground">
               {doneCount} of {participants.length} reviewed
             </p>
@@ -95,8 +89,7 @@ export function ReviewStatusCard({
             </Button>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+
         <div className="flex gap-2" data-testid="review-progress">
           {participants.map((participant) => (
             <div
@@ -107,8 +100,9 @@ export function ReviewStatusCard({
             />
           ))}
         </div>
+      </div>
 
-        <div className="space-y-2">
+      <div className="space-y-3">
           {participants.map((participant) => {
             const split = splitByParticipantId.get(participant.id)
 
@@ -116,9 +110,9 @@ export function ReviewStatusCard({
               <div
                 key={participant.id}
                 data-testid="review-participant"
-                className="space-y-2 rounded-lg border px-3 py-3"
+                className="space-y-2"
               >
-                <div className="flex items-center justify-between gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] items-center gap-x-3">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="font-medium">{participant.name}</span>
                     {participant.role === "owner" ? (
@@ -128,50 +122,46 @@ export function ReviewStatusCard({
                       <Badge variant="outline">You</Badge>
                     ) : null}
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="font-semibold">
-                      ${(split?.total ?? 0).toFixed(2)}
-                    </span>
-                    <Button
-                      data-testid={
-                        participant.id === currentParticipantId
-                          ? "done-toggle"
-                          : undefined
-                      }
-                      type="button"
-                      size="sm"
-                      className="min-w-28"
-                      variant={
-                        participant.id === currentParticipantId &&
-                        participant.doneAt === null &&
-                        !isSaving
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={
-                        participant.id === currentParticipantId
-                          ? onToggleDone
-                          : undefined
-                      }
-                      disabled={
-                        participant.id !== currentParticipantId || isSaving
-                      }
-                    >
-                      {participant.id === currentParticipantId ? (
-                        isSaving ? (
-                          "Saving..."
-                        ) : participant.doneAt !== null ? (
-                          "Reviewed"
-                        ) : (
-                          "Review now"
-                        )
+                  <span className="text-right font-semibold tabular-nums">
+                    ${(split?.total ?? 0).toFixed(2)}
+                  </span>
+                  <Button
+                    data-testid={
+                      participant.id === currentParticipantId
+                        ? "done-toggle"
+                        : undefined
+                    }
+                    type="button"
+                    size="sm"
+                    className="min-w-28 justify-center"
+                    variant={
+                      participant.id === currentParticipantId &&
+                      participant.doneAt === null &&
+                      !isSaving
+                        ? "default"
+                        : "outline"
+                    }
+                    onClick={
+                      participant.id === currentParticipantId
+                        ? onToggleDone
+                        : undefined
+                    }
+                    disabled={participant.id !== currentParticipantId || isSaving}
+                  >
+                    {participant.id === currentParticipantId ? (
+                      isSaving ? (
+                        "Saving..."
                       ) : participant.doneAt !== null ? (
                         "Reviewed"
                       ) : (
-                        "Pending"
-                      )}
-                    </Button>
-                  </div>
+                        "Review now"
+                      )
+                    ) : participant.doneAt !== null ? (
+                      "Reviewed"
+                    ) : (
+                      "Pending"
+                    )}
+                  </Button>
                 </div>
 
                 {showBreakdown && split && split.total > 0 ? (
@@ -179,37 +169,46 @@ export function ReviewStatusCard({
                     {split.items.map((item, index) => (
                       <div
                         key={`${participant.id}-${index}`}
-                        className="flex justify-between text-xs text-muted-foreground"
+                        className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-xs text-muted-foreground"
                       >
                         <span>{item.name}</span>
-                        <span>${item.amount.toFixed(2)}</span>
+                        <span className="text-right tabular-nums">
+                          ${item.amount.toFixed(2)}
+                        </span>
+                        <span />
                       </div>
                     ))}
-                    <div className="flex justify-between text-xs text-muted-foreground">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-xs text-muted-foreground">
                       <span>Tax & svc charge</span>
-                      <span>${split.extras.toFixed(2)}</span>
+                      <span className="text-right tabular-nums">
+                        ${split.extras.toFixed(2)}
+                      </span>
+                      <span />
                     </div>
                   </div>
                 ) : null}
               </div>
             )
           })}
-        </div>
+      </div>
 
-        <Separator />
+      <Separator />
 
-        <div className="flex justify-between text-sm">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-sm">
           <span className="text-muted-foreground">Bill total</span>
-          <span>${total.toFixed(2)}</span>
-        </div>
+          <span className="text-right tabular-nums">${total.toFixed(2)}</span>
+          <span />
+      </div>
 
-        {unclaimed > 0 ? (
-          <div className="flex justify-between text-sm text-red-500">
+      {unclaimed > 0 ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-sm text-red-500">
             <span>Unaccounted</span>
-            <span>${unclaimed.toFixed(2)}</span>
+            <span className="text-right tabular-nums">
+              ${unclaimed.toFixed(2)}
+            </span>
+            <span />
           </div>
         ) : null}
-      </CardContent>
-    </Card>
+    </section>
   )
 }
