@@ -289,7 +289,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
+    <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:items-start md:gap-4">
       <h1 className="mb-5 text-center text-xl font-semibold md:col-start-1 md:row-start-1 md:mb-0 md:text-left">
         {bill.name}
       </h1>
