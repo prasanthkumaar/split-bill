@@ -51,7 +51,6 @@ export const setClaimers = mutation({
         throw new Error("Invalid friendId for this bill")
       }
     }
-
     const existing = await ctx.db
       .query("claims")
       .withIndex("by_bill", (q) => q.eq("billId", args.billId))
