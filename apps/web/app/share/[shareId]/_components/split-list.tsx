@@ -22,7 +22,6 @@ type SplitListProps = {
   isDesktop: boolean
   onClaimIdsChange: (
     newIds: Id<"friends">[],
-    currentClaimerIds: Id<"friends">[],
     lineItemId: Id<"lineItems">,
     unitIndex: number
   ) => void
@@ -74,7 +73,6 @@ export function SplitList({
                     onValueChange={(ids: string[]) =>
                       onClaimIdsChange(
                         ids as Id<"friends">[],
-                        claimerIds,
                         item._id,
                         item.unitIndex
                       )

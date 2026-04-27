@@ -22,9 +22,8 @@ type DrawerItem = {
 } | null
 
 export function ShareSession({ shareId }: ShareSessionProps) {
-  const data = useQuery(api.bills.getSharePageData, { shareId })
-  const toggleClaim = useMutation(api.claims.toggle)
-  const setClaimers = useMutation(api.claims.setClaimers)
+  const data = useQuery(api.sharing.getShareSession, { shareId })
+  const setClaimers = useMutation(api.sharing.setClaimers)
 
   const [showBreakdown, setShowBreakdown] = useState(false)
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -133,25 +132,16 @@ export function ShareSession({ shareId }: ShareSessionProps) {
 
   const handleClaimChange = (
     newIds: Id<"friends">[],
-    currentClaimerIds: Id<"friends">[],
     lineItemId: Id<"lineItems">,
     unitIndex: number
   ) => {
-    const addedId = newIds.find((friendId) => !currentClaimerIds.includes(friendId))
-    const removedId = currentClaimerIds.find((friendId) => !newIds.includes(friendId))
-    const changedId = addedId ?? removedId
-
-    if (!changedId) {
-      return
-    }
-
     void (async () => {
       try {
-        await toggleClaim({
+        await setClaimers({
           billId: bill._id,
-          friendId: changedId,
           lineItemId,
           unitIndex,
+          friendIds: newIds,
         })
       } catch (error) {
         console.error("Failed to update claim:", error)
