@@ -9,6 +9,7 @@ import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 import { ShareHeader } from "./_components/share-header"
 import { IdentityDialog } from "./_components/identity-dialog"
 import { ShareReceiptCard } from "./_components/share-receipt-card"
+import { ReviewStatusCard } from "./_components/review-status-card"
 import { SplitList } from "./_components/split-list"
 import { ItemSplitDialog } from "./_components/item-split-dialog"
 
@@ -28,6 +29,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const clerk = useClerk()
   const data = useQuery(api.sharing.getShareSession, { shareId })
   const prepareShareSession = useMutation(api.sharing.prepareShareSession)
+  const setDone = useMutation(api.sharing.setDone)
   const setClaimers = useMutation(api.sharing.setClaimers)
 
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -292,6 +294,18 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     setIdentityDialogOpen(false)
   }
 
+  const handleToggleDone = () => {
+    if (!currentParticipant) {
+      return
+    }
+
+    setDone({
+      billId: bill._id,
+      participantId: currentParticipant.id,
+      done: currentParticipant.doneAt === null,
+    })
+  }
+
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
       <div className="space-y-4 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
@@ -306,6 +320,13 @@ export function ShareSession({ shareId }: ShareSessionProps) {
           total={total}
           unclaimed={unclaimed}
         />
+        {currentParticipant ? (
+          <ReviewStatusCard
+            participants={participants}
+            currentParticipantId={currentParticipant.id}
+            onToggleDone={handleToggleDone}
+          />
+        ) : null}
       </div>
 
       <div className="space-y-4">
