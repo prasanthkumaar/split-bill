@@ -59,7 +59,7 @@ export function ReviewStatusCard({
   ]
 
   return (
-    <section className="space-y-4 md:pr-4">
+    <section className="space-y-6 md:pr-4">
       <ReviewTransferStatus
         doneCount={doneCount}
         participantCount={participants.length}
