@@ -60,6 +60,11 @@ export function ReviewStatusCard({
 
   return (
     <section className="space-y-4 md:pr-4">
+      <ReviewTransferStatus
+        doneCount={doneCount}
+        participantCount={participants.length}
+      />
+
       <div className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className="text-lg font-bold">Summary</h2>
@@ -189,11 +194,6 @@ export function ReviewStatusCard({
             <span />
           </div>
         ) : null}
-
-        <ReviewTransferStatus
-          doneCount={doneCount}
-          participantCount={participants.length}
-        />
       </div>
     </section>
   )
