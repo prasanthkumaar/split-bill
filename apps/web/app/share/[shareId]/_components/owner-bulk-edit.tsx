@@ -351,7 +351,8 @@ export function OwnerBulkEdit({
       <Button
         data-testid="bulk-edit-trigger"
         className="w-fit shrink-0"
-        size="sm"
+        size="lg"
+        variant="outline"
         onClick={() => setOpen(true)}
       >
         Bulk edit
