@@ -69,7 +69,17 @@ export function ReviewStatusCard({
               {doneCount} of {participants.length} reviewed
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              data-testid="current-participant-trigger"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={onChangeParticipant}
+            >
+              {currentParticipant.name}
+              <ChevronDown className="size-4" />
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -83,16 +93,6 @@ export function ReviewStatusCard({
                 <Eye className="size-4" />
               )}
               {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-            </Button>
-            <Button
-              data-testid="current-participant-trigger"
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={onChangeParticipant}
-            >
-              {currentParticipant.name}
-              <ChevronDown className="size-4" />
             </Button>
           </div>
         </div>
@@ -119,19 +119,7 @@ export function ReviewStatusCard({
                 data-testid="review-participant"
                 className="space-y-2"
               >
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] items-center gap-x-3">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="font-medium">{participant.name}</span>
-                    {participant.role === "owner" ? (
-                      <Badge variant="secondary">Owner</Badge>
-                    ) : null}
-                    {participant.id === currentParticipantId ? (
-                      <Badge variant="outline">You</Badge>
-                    ) : null}
-                  </div>
-                  <span className="text-right font-semibold tabular-nums">
-                    ${(split?.total ?? 0).toFixed(2)}
-                  </span>
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
                   <Button
                     data-testid={
                       participant.id === currentParticipantId
@@ -139,8 +127,8 @@ export function ReviewStatusCard({
                         : undefined
                     }
                     type="button"
-                    size="sm"
-                    className="min-w-28 justify-center"
+                    size="xs"
+                    className="min-w-24 justify-center"
                     variant={
                       participant.id === currentParticipantId &&
                       participant.doneAt === null &&
@@ -161,7 +149,7 @@ export function ReviewStatusCard({
                       ) : participant.doneAt !== null ? (
                         "Reviewed"
                       ) : (
-                        "Review now"
+                        "I've checked"
                       )
                     ) : participant.doneAt !== null ? (
                       "Reviewed"
@@ -169,28 +157,40 @@ export function ReviewStatusCard({
                       "Pending"
                     )}
                   </Button>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="font-medium">{participant.name}</span>
+                    {participant.role === "owner" ? (
+                      <Badge variant="secondary">Owner</Badge>
+                    ) : null}
+                    {participant.id === currentParticipantId ? (
+                      <Badge variant="outline">You</Badge>
+                    ) : null}
+                  </div>
+                  <span className="text-right font-semibold tabular-nums">
+                    ${(split?.total ?? 0).toFixed(2)}
+                  </span>
                 </div>
 
                 {showBreakdown && split && split.total > 0 ? (
-                  <div className="space-y-0.5 pl-2">
+                  <div className="space-y-0.5">
                     {split.items.map((item, index) => (
                       <div
                         key={`${participant.id}-${index}`}
-                        className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-xs text-muted-foreground"
+                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-xs text-muted-foreground"
                       >
+                        <span />
                         <span>{item.name}</span>
                         <span className="text-right tabular-nums">
                           ${item.amount.toFixed(2)}
                         </span>
-                        <span />
                       </div>
                     ))}
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-xs text-muted-foreground">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-xs text-muted-foreground">
+                      <span />
                       <span>Tax & svc charge</span>
                       <span className="text-right tabular-nums">
                         ${split.extras.toFixed(2)}
                       </span>
-                      <span />
                     </div>
                   </div>
                 ) : null}
@@ -201,19 +201,19 @@ export function ReviewStatusCard({
 
       <Separator />
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-sm">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-sm">
+          <span />
           <span className="text-muted-foreground">Bill total</span>
           <span className="text-right tabular-nums">${total.toFixed(2)}</span>
-          <span />
       </div>
 
       {unclaimed > 0 ? (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_7rem] gap-x-3 text-sm text-red-500">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-sm text-red-500">
+            <span />
             <span>Unaccounted</span>
             <span className="text-right tabular-nums">
               ${unclaimed.toFixed(2)}
             </span>
-            <span />
           </div>
         ) : null}
     </section>

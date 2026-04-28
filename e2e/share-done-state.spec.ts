@@ -70,7 +70,9 @@ test("guest done state persists across refresh and does not block tagging", asyn
   const { context, page: guestPage } = await openGuestPage(browser, shareUrl)
 
   await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Review now")
+  await expect(guestPage.getByTestId("done-toggle")).toHaveText(
+    "I've checked"
+  )
 
   await guestPage.getByTestId("done-toggle").click()
   await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
@@ -111,7 +113,7 @@ test("owner can mark done without affecting owner entry", async ({ page }) => {
   await expect(page.getByTestId("review-participant").first()).toContainText(
     "You"
   )
-  await expect(page.getByTestId("done-toggle")).toHaveText("Review now")
+  await expect(page.getByTestId("done-toggle")).toHaveText("I've checked")
 
   await page.getByTestId("done-toggle").click()
   await expect(page.getByText("1 of 2 reviewed")).toBeVisible()
