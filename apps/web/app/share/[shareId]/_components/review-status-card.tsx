@@ -98,109 +98,113 @@ export function ReviewStatusCard({
       </div>
 
       <div className="space-y-3">
-          {displayParticipants.map((participant) => {
-            const split = splitByParticipantId.get(participant.id)
+        {displayParticipants.map((participant) => {
+          const split = splitByParticipantId.get(participant.id)
 
-            return (
-              <div
-                key={participant.id}
-                data-testid="review-participant"
-                className="space-y-2"
-              >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
-                  <Button
-                    data-testid={
-                      participant.id === currentParticipantId
-                        ? "done-toggle"
-                        : undefined
-                    }
-                    type="button"
-                    size="default"
-                    className="min-w-24 justify-center"
-                    variant={
-                      participant.id === currentParticipantId &&
-                      participant.doneAt === null &&
-                      !isSaving
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={
-                      participant.id === currentParticipantId
-                        ? onToggleDone
-                        : undefined
-                    }
-                    disabled={participant.id !== currentParticipantId || isSaving}
-                  >
-                    {participant.id === currentParticipantId ? (
-                      isSaving ? (
-                        "Saving..."
-                      ) : participant.doneAt !== null ? (
-                        "Reviewed"
-                      ) : (
-                        "I've checked"
-                      )
+          return (
+            <div
+              key={participant.id}
+              data-testid="review-participant"
+              className="space-y-2"
+            >
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="font-medium">{participant.name}</span>
+                  {participant.role === "owner" ? (
+                    <Badge variant="secondary">Owner</Badge>
+                  ) : null}
+                </div>
+                <span className="text-right font-semibold tabular-nums">
+                  ${(split?.total ?? 0).toFixed(2)}
+                </span>
+                <Button
+                  data-testid={
+                    participant.id === currentParticipantId
+                      ? "done-toggle"
+                      : undefined
+                  }
+                  type="button"
+                  size="default"
+                  className="min-w-24 justify-center"
+                  variant={
+                    participant.id === currentParticipantId &&
+                    participant.doneAt === null &&
+                    !isSaving
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={
+                    participant.id === currentParticipantId
+                      ? onToggleDone
+                      : undefined
+                  }
+                  disabled={participant.id !== currentParticipantId || isSaving}
+                >
+                  {participant.id === currentParticipantId ? (
+                    isSaving ? (
+                      "Saving..."
                     ) : participant.doneAt !== null ? (
                       "Reviewed"
                     ) : (
-                      "Pending"
-                    )}
-                  </Button>
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="font-medium">{participant.name}</span>
-                    {participant.role === "owner" ? (
-                      <Badge variant="secondary">Owner</Badge>
-                    ) : null}
-                  </div>
-                  <span className="text-right font-semibold tabular-nums">
-                    ${(split?.total ?? 0).toFixed(2)}
-                  </span>
-                </div>
-
-                {showBreakdown && split && split.total > 0 ? (
-                  <div className="space-y-0.5">
-                    {split.items.map((item, index) => (
-                      <div
-                        key={`${participant.id}-${index}`}
-                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-xs text-muted-foreground"
-                      >
-                        <span />
-                        <span>{item.name}</span>
-                        <span className="text-right tabular-nums">
-                          ${item.amount.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-xs text-muted-foreground">
-                      <span />
-                      <span>Tax & svc charge</span>
-                      <span className="text-right tabular-nums">
-                        ${split.extras.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
+                      "I've checked"
+                    )
+                  ) : participant.doneAt !== null ? (
+                    "Reviewed"
+                  ) : (
+                    "Pending"
+                  )}
+                </Button>
               </div>
-            )
-          })}
+
+              {showBreakdown && split && split.total > 0 ? (
+                <div className="space-y-0.5">
+                  {split.items.map((item, index) => (
+                    <div
+                      key={`${participant.id}-${index}`}
+                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 text-xs text-muted-foreground"
+                    >
+                      <span>{item.name}</span>
+                      <span className="text-right tabular-nums">
+                        ${item.amount.toFixed(2)}
+                      </span>
+                      <span />
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 text-xs text-muted-foreground">
+                    <span>Tax & svc charge</span>
+                    <span className="text-right tabular-nums">
+                      ${split.extras.toFixed(2)}
+                    </span>
+                    <span />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
 
       <Separator />
 
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-sm">
+      <div className="space-y-3 pb-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
+          <span className="font-medium">Bill total</span>
+          <span className="text-right font-semibold tabular-nums">
+            ${total.toFixed(2)}
+          </span>
           <span />
-          <span className="text-muted-foreground">Bill total</span>
-          <span className="text-right tabular-nums">${total.toFixed(2)}</span>
-      </div>
+        </div>
 
-      {unclaimed > 0 ? (
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 text-sm text-red-500">
-            <span />
-            <span>Unaccounted</span>
-            <span className="text-right tabular-nums">
+        {unclaimed > 0 ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 text-red-500">
+            <span className="font-medium">Unaccounted</span>
+            <span className="text-right font-semibold tabular-nums">
               ${unclaimed.toFixed(2)}
             </span>
+            <span />
           </div>
         ) : null}
+      </div>
     </section>
   )
 }
