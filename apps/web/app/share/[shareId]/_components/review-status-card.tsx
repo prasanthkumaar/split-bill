@@ -96,7 +96,11 @@ export function ReviewStatusCard({
               <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-medium">{participant.name}</span>
-                  <Badge variant={participant.doneAt !== null ? "outline" : "secondary"}>
+                  <Badge
+                    variant={
+                      participant.doneAt !== null ? "secondary" : "outline"
+                    }
+                  >
                     {participant.doneAt !== null ? "Reviewed" : "Pending"}
                   </Badge>
                 </div>
