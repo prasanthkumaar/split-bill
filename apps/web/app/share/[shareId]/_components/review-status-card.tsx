@@ -115,7 +115,7 @@ export function ReviewStatusCard({
                         : undefined
                     }
                     type="button"
-                    size="xs"
+                    size="default"
                     className="min-w-24 justify-center"
                     variant={
                       participant.id === currentParticipantId &&
