@@ -332,6 +332,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
 
       <IdentityDialog
         open={identityDialogOpen || currentParticipant === null}
+        currentParticipantId={currentParticipantId}
         participants={participants}
         onSelectParticipant={handleSelectParticipant}
       />
