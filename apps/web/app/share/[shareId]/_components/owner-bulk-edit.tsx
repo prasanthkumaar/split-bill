@@ -6,23 +6,11 @@ import { api } from "@convex/_generated/api"
 import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@workspace/ui/components/dialog"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@workspace/ui/components/drawer"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 import { generateBulkEdit } from "../actions"
 import type { BulkEditResult } from "../schema"
+import { ResponsiveDrawerDialog } from "./responsive-drawer-dialog"
 
 type OwnerBulkEditProps = {
   billId: Id<"bills">
@@ -166,18 +154,12 @@ export function OwnerBulkEdit({
 
   const composeContent = (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Describe how you want the bill split. The review step will show every
-          unit before anything is applied.
-        </p>
-        <Textarea
-          data-testid="bulk-edit-prompt"
-          placeholder="Example: Put the laksa on Bob, split the teas between Alice and me."
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-        />
-      </div>
+      <Textarea
+        data-testid="bulk-edit-prompt"
+        placeholder="Example: Put the laksa on Bob, split the teas between Alice and me."
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+      />
 
       <div className="divide-y overflow-hidden rounded-lg border">
         {BULK_EDIT_SUGGESTIONS.map((suggestion) => (
@@ -358,35 +340,21 @@ export function OwnerBulkEdit({
         Bulk edit
       </Button>
 
-      {isDesktop ? (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogContent className="flex max-h-[calc(100vh-4rem)] flex-col sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {review ? "Review bulk edit" : "Compose bulk edit"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {review ? reviewContent : composeContent}
-            </div>
-            <div className="flex justify-end gap-1">{desktopFooter}</div>
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <Drawer open={open} onOpenChange={handleOpenChange}>
-          <DrawerContent aria-describedby={undefined}>
-            <DrawerHeader className="pb-6">
-              <DrawerTitle className="text-lg">
-                {review ? "Review bulk edit" : "Compose bulk edit"}
-              </DrawerTitle>
-            </DrawerHeader>
-            <div className="px-4 pb-2">
-              {review ? reviewContent : composeContent}
-            </div>
-            <DrawerFooter className="gap-1 pb-8">{mobileFooter}</DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-      )}
+      <ResponsiveDrawerDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        title={review ? "Review bulk edit" : "Compose bulk edit"}
+        description={
+          review
+            ? undefined
+            : "Describe how you want the bill split. The review step will show every unit before anything is applied."
+        }
+        footer={isDesktop ? desktopFooter : mobileFooter}
+        showCloseButton
+        contentClassName="sm:max-w-2xl"
+      >
+        {review ? reviewContent : composeContent}
+      </ResponsiveDrawerDialog>
     </>
   )
 }
