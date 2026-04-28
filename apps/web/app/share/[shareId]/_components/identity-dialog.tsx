@@ -2,19 +2,7 @@
 
 import type { Id } from "@convex/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@workspace/ui/components/dialog"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@workspace/ui/components/drawer"
-import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
+import { ResponsiveDrawerDialog } from "./responsive-drawer-dialog"
 
 type IdentityDialogProps = {
   open: boolean
@@ -33,16 +21,14 @@ export function IdentityDialog({
   participants,
   onSelectParticipant,
 }: IdentityDialogProps) {
-  const isDesktop = useMediaQuery("(min-width: 768px)")
-
-  const content = (
-    <>
-      <div className="px-4 md:px-0">
-        <div className="text-sm text-muted-foreground">
-          Pick your name to start reviewing this bill.
-        </div>
-      </div>
-      <div className="space-y-1.5 px-4 pb-6 md:px-0 md:pb-0">
+  return (
+    <ResponsiveDrawerDialog
+      open={open}
+      title="Who are you?"
+      description="Pick your name to start reviewing this bill."
+      contentClassName="sm:max-w-md"
+    >
+      <div className="space-y-1.5">
         {participants.map((participant) => {
           const isSelected = participant.id === currentParticipantId
 
@@ -62,31 +48,7 @@ export function IdentityDialog({
           )
         })}
       </div>
-    </>
-  )
-
-  if (isDesktop) {
-    return (
-      <Dialog open={open}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader className="pb-6">
-            <DialogTitle className="text-lg">Who are you?</DialogTitle>
-          </DialogHeader>
-          {content}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
-  return (
-    <Drawer open={open}>
-      <DrawerContent aria-describedby={undefined}>
-        <DrawerHeader className="pb-6">
-          <DrawerTitle className="text-lg">Who are you?</DrawerTitle>
-        </DrawerHeader>
-        {content}
-      </DrawerContent>
-    </Drawer>
+    </ResponsiveDrawerDialog>
   )
 }
 
