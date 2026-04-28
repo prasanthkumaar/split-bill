@@ -20,7 +20,7 @@ export function ShareReceiptCard({ receiptUrl }: ShareReceiptCardProps) {
   }
 
   return (
-    <Card className="border-none pt-0 md:bg-transparent md:shadow-none md:ring-0">
+    <Card className="border-none pt-0 pb-0 md:bg-transparent md:shadow-none md:ring-0">
       <CardContent className="space-y-3 py-4 md:px-0 md:py-0 md:pr-4">
         <Dialog>
           <div className="relative h-40 w-full overflow-hidden rounded-lg md:h-72">
