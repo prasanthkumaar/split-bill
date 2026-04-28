@@ -320,7 +320,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             <Button
               data-testid="current-participant-trigger"
               variant="outline"
-              size="sm"
+              size="lg"
               className="shrink-0 gap-2"
               onClick={() => setIdentityDialogOpen(true)}
             >
