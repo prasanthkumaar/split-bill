@@ -314,7 +314,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
       <div className="space-y-4 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 md:pr-4">
           <h1 className="min-w-0 text-xl font-semibold">{bill.name}</h1>
           {currentParticipant ? (
             <Button
