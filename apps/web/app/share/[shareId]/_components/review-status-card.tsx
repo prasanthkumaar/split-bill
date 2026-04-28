@@ -186,7 +186,7 @@ export function ReviewStatusCard({
 
       <Separator />
 
-      <div className="space-y-3 pb-4">
+      <div className="space-y-3 pb-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
           <span className="font-medium">Bill total</span>
           <span className="text-right font-semibold tabular-nums">
