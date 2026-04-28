@@ -110,16 +110,10 @@ test("owner can mark done without affecting owner entry", async ({ page }) => {
   await expect(page.getByTestId("current-participant-trigger")).toHaveText(
     "Owner"
   )
-  await expect(page.getByTestId("review-participant").first()).toContainText(
-    "You"
-  )
   await expect(page.getByTestId("done-toggle")).toHaveText("I've checked")
 
   await page.getByTestId("done-toggle").click()
   await expect(page.getByText("1 of 2 reviewed")).toBeVisible()
-  await expect(page.getByTestId("review-participant").first()).toContainText(
-    "You"
-  )
   await expect(page.getByTestId("review-participant").first()).toContainText(
     "Reviewed"
   )

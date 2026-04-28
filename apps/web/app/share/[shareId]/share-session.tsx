@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react"
 import { useAuth, useClerk } from "@clerk/nextjs"
 import { useQuery, useMutation } from "convex/react"
+import { ChevronDown } from "lucide-react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
+import { Button } from "@workspace/ui/components/button"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 import { IdentityDialog } from "./_components/identity-dialog"
 import { ShareReceiptCard } from "./_components/share-receipt-card"
@@ -312,9 +314,21 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
       <div className="space-y-4 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
-        <h1 className="text-center text-xl font-semibold md:text-left">
-          {bill.name}
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-xl font-semibold">{bill.name}</h1>
+          {currentParticipant ? (
+            <Button
+              data-testid="current-participant-trigger"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-2"
+              onClick={() => setIdentityDialogOpen(true)}
+            >
+              {currentParticipant.name}
+              <ChevronDown className="size-4" />
+            </Button>
+          ) : null}
+        </div>
         <ShareReceiptCard receiptUrl={receiptUrl} />
         {currentParticipant ? (
           <ReviewStatusCard
@@ -324,7 +338,6 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             isSaving={isTogglingDone}
             showBreakdown={showBreakdown}
             onToggleBreakdown={() => setShowBreakdown((current) => !current)}
-            onChangeParticipant={() => setIdentityDialogOpen(true)}
             onToggleDone={handleToggleDone}
             total={total}
             unclaimed={unclaimed}

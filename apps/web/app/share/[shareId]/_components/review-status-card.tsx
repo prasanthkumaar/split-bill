@@ -1,5 +1,5 @@
 import type { Id } from "@convex/_generated/dataModel"
-import { ChevronDown, Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
@@ -22,7 +22,6 @@ type ReviewStatusCardProps = {
   isSaving: boolean
   showBreakdown: boolean
   onToggleBreakdown: () => void
-  onChangeParticipant: () => void
   onToggleDone: () => void
   total: number
   unclaimed: number
@@ -35,7 +34,6 @@ export function ReviewStatusCard({
   isSaving,
   showBreakdown,
   onToggleBreakdown,
-  onChangeParticipant,
   onToggleDone,
   total,
   unclaimed,
@@ -70,16 +68,6 @@ export function ReviewStatusCard({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Button
-              data-testid="current-participant-trigger"
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={onChangeParticipant}
-            >
-              {currentParticipant.name}
-              <ChevronDown className="size-4" />
-            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -161,9 +149,6 @@ export function ReviewStatusCard({
                     <span className="font-medium">{participant.name}</span>
                     {participant.role === "owner" ? (
                       <Badge variant="secondary">Owner</Badge>
-                    ) : null}
-                    {participant.id === currentParticipantId ? (
-                      <Badge variant="outline">You</Badge>
                     ) : null}
                   </div>
                   <span className="text-right font-semibold tabular-nums">
