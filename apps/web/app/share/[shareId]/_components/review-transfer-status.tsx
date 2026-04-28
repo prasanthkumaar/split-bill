@@ -23,7 +23,7 @@ export function ReviewTransferStatus({
         </div>
         <div
           data-testid="review-progress"
-          className="h-0.5 overflow-hidden rounded-full bg-muted"
+          className="h-px overflow-hidden rounded-full bg-muted"
         >
           <div
             className="h-full rounded-full bg-primary"
