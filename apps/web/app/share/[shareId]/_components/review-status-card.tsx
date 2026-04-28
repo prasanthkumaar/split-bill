@@ -104,9 +104,6 @@ export function ReviewStatusCard({
                     <Badge variant="secondary">Owner</Badge>
                   ) : null}
                 </div>
-                <span className="text-right font-semibold tabular-nums">
-                  ${(split?.total ?? 0).toFixed(2)}
-                </span>
                 <Button
                   data-testid={
                     participant.id === currentParticipantId
@@ -144,6 +141,9 @@ export function ReviewStatusCard({
                     "Pending"
                   )}
                 </Button>
+                <span className="text-right font-semibold tabular-nums">
+                  ${(split?.total ?? 0).toFixed(2)}
+                </span>
               </div>
 
               {showBreakdown && split && split.total > 0 ? (
@@ -154,18 +154,18 @@ export function ReviewStatusCard({
                       className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 text-xs text-muted-foreground"
                     >
                       <span>{item.name}</span>
+                      <span />
                       <span className="text-right tabular-nums">
                         ${item.amount.toFixed(2)}
                       </span>
-                      <span />
                     </div>
                   ))}
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 text-xs text-muted-foreground">
                     <span>Tax & svc charge</span>
+                    <span />
                     <span className="text-right tabular-nums">
                       ${split.extras.toFixed(2)}
                     </span>
-                    <span />
                   </div>
                 </div>
               ) : null}
@@ -179,19 +179,19 @@ export function ReviewStatusCard({
       <div className="space-y-4 pb-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
           <span className="font-medium">Bill total</span>
+          <span />
           <span className="text-right font-semibold tabular-nums">
             ${total.toFixed(2)}
           </span>
-          <span />
         </div>
 
         {unclaimed > 0 ? (
           <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 text-red-500">
             <span className="font-medium">Unaccounted</span>
+            <span />
             <span className="text-right font-semibold tabular-nums">
               ${unclaimed.toFixed(2)}
             </span>
-            <span />
           </div>
         ) : null}
       </div>
