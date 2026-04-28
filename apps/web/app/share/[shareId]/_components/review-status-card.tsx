@@ -94,10 +94,13 @@ export function ReviewStatusCard({
               className="space-y-2"
             >
               <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
-                <span className="font-medium">{participant.name}</span>
-                <Badge variant={participant.doneAt !== null ? "outline" : "secondary"}>
-                  {participant.doneAt !== null ? "Reviewed" : "Pending"}
-                </Badge>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="font-medium">{participant.name}</span>
+                  <Badge variant={participant.doneAt !== null ? "outline" : "secondary"}>
+                    {participant.doneAt !== null ? "Reviewed" : "Pending"}
+                  </Badge>
+                </div>
+                <span />
                 <span className="text-right font-semibold tabular-nums">
                   ${(split?.total ?? 0).toFixed(2)}
                 </span>
