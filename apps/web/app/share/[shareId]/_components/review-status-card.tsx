@@ -20,10 +20,8 @@ type ReviewStatusCardProps = {
     total: number
   }[]
   currentParticipantId: Id<"friends">
-  isSaving: boolean
   showBreakdown: boolean
   onToggleBreakdown: () => void
-  onToggleDone: () => void
   total: number
   unclaimed: number
 }
@@ -32,10 +30,8 @@ export function ReviewStatusCard({
   participants,
   splits,
   currentParticipantId,
-  isSaving,
   showBreakdown,
   onToggleBreakdown,
-  onToggleDone,
   total,
   unclaimed,
 }: ReviewStatusCardProps) {
@@ -98,49 +94,10 @@ export function ReviewStatusCard({
               className="space-y-2"
             >
               <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="font-medium">{participant.name}</span>
-                  {participant.role === "owner" ? (
-                    <Badge variant="secondary">Owner</Badge>
-                  ) : null}
-                </div>
-                <Button
-                  data-testid={
-                    participant.id === currentParticipantId
-                      ? "done-toggle"
-                      : undefined
-                  }
-                  type="button"
-                  size="default"
-                  className="min-w-24 justify-center"
-                  variant={
-                    participant.id === currentParticipantId &&
-                    participant.doneAt === null &&
-                    !isSaving
-                      ? "default"
-                      : "outline"
-                  }
-                  onClick={
-                    participant.id === currentParticipantId
-                      ? onToggleDone
-                      : undefined
-                  }
-                  disabled={participant.id !== currentParticipantId || isSaving}
-                >
-                  {participant.id === currentParticipantId ? (
-                    isSaving ? (
-                      "Saving..."
-                    ) : participant.doneAt !== null ? (
-                      "Reviewed"
-                    ) : (
-                      "I've checked"
-                    )
-                  ) : participant.doneAt !== null ? (
-                    "Reviewed"
-                  ) : (
-                    "Pending"
-                  )}
-                </Button>
+                <span className="font-medium">{participant.name}</span>
+                <Badge variant={participant.doneAt !== null ? "outline" : "secondary"}>
+                  {participant.doneAt !== null ? "Reviewed" : "Pending"}
+                </Badge>
                 <span className="text-right font-semibold tabular-nums">
                   ${(split?.total ?? 0).toFixed(2)}
                 </span>

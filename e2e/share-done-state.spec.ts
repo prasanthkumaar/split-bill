@@ -70,12 +70,10 @@ test("guest done state persists across refresh and does not block tagging", asyn
   const { context, page: guestPage } = await openGuestPage(browser, shareUrl)
 
   await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText(
-    "I've checked"
-  )
+  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
   await expect(
     guestPage.getByText(
-      "Please wait until all members have reviewed before transferring to the bill owner."
+      "Please wait until all members have reviewed as your items might be shared with others, affecting your cost"
     )
   ).toBeVisible()
 
@@ -83,7 +81,7 @@ test("guest done state persists across refresh and does not block tagging", asyn
   await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
   await expect(
     guestPage.getByTestId("review-participant").first()
-  ).toContainText("Bob")
+  ).toContainText("Reviewed")
 
   const laksaCombobox = guestPage.getByPlaceholder("Add people...").first()
   await laksaCombobox.fill("Bob")
@@ -98,10 +96,16 @@ test("guest done state persists across refresh and does not block tagging", asyn
   await guestPage.getByRole("button", { name: "Bob" }).click()
   await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
   await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
+  await expect(
+    guestPage.getByTestId("review-participant").first()
+  ).toContainText("Reviewed")
   await expect(guestPage.getByText("$18.00").first()).toBeVisible()
 
   await guestPage.getByTestId("done-toggle").click()
   await expect(guestPage.getByText("0 of 2 reviewed")).toBeVisible()
+  await expect(
+    guestPage.getByTestId("review-participant").first()
+  ).toContainText("Pending")
 
   await context.close()
 })
@@ -118,10 +122,10 @@ test("owner can mark done without affecting owner entry", async ({
   await expect(page.getByTestId("current-participant-trigger")).toHaveText(
     "Owner"
   )
-  await expect(page.getByTestId("done-toggle")).toHaveText("I've checked")
+  await expect(page.getByTestId("done-toggle")).toHaveText("Reviewed")
   await expect(
     page.getByText(
-      "Please wait until all members have reviewed before transferring to the bill owner."
+      "Please wait until all members have reviewed as your items might be shared with others, affecting your cost"
     )
   ).toBeVisible()
 

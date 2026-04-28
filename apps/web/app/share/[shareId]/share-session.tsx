@@ -314,20 +314,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
       <div className="space-y-3 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
-        <div className="flex items-center justify-between gap-3 md:pr-4">
+        <div className="md:pr-4">
           <h1 className="min-w-0 text-xl font-semibold">{bill.name}</h1>
-          {currentParticipant ? (
-            <Button
-              data-testid="current-participant-trigger"
-              variant="outline"
-              size="lg"
-              className="shrink-0 gap-2"
-              onClick={() => setIdentityDialogOpen(true)}
-            >
-              {currentParticipant.name}
-              <ChevronDown className="size-4" />
-            </Button>
-          ) : null}
         </div>
         <ShareReceiptCard receiptUrl={receiptUrl} />
         {currentParticipant ? (
@@ -335,10 +323,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             participants={participants}
             splits={splits}
             currentParticipantId={currentParticipant.id}
-            isSaving={isTogglingDone}
             showBreakdown={showBreakdown}
             onToggleBreakdown={() => setShowBreakdown((current) => !current)}
-            onToggleDone={handleToggleDone}
             total={total}
             unclaimed={unclaimed}
           />
@@ -352,6 +338,35 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             claimsByItem={claimsByItem}
             participants={participantOptions}
             participantLabelById={participantLabelById}
+            headerActions={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  data-testid="current-participant-trigger"
+                  variant="outline"
+                  size="default"
+                  className="shrink-0 gap-2"
+                  onClick={() => setIdentityDialogOpen(true)}
+                >
+                  {currentParticipant.name}
+                  <ChevronDown className="size-4" />
+                </Button>
+                <Button
+                  data-testid="done-toggle"
+                  type="button"
+                  size="default"
+                  className="shrink-0"
+                  variant={
+                    currentParticipant.doneAt === null && !isTogglingDone
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={handleToggleDone}
+                  disabled={isTogglingDone}
+                >
+                  Reviewed
+                </Button>
+              </div>
+            }
             isDesktop={isDesktop}
             onClaimIdsChange={handleClaimChange}
             onOpenItemSplit={openDrawer}

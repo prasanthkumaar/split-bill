@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import type { Doc, Id } from "@convex/_generated/dataModel"
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import {
@@ -25,6 +26,7 @@ type SplitListProps = {
     role: "owner" | "guest"
   }[]
   participantLabelById: Map<Id<"friends">, string>
+  headerActions?: ReactNode
   isDesktop: boolean
   onClaimIdsChange: (
     newIds: Id<"friends">[],
@@ -45,14 +47,18 @@ export function SplitList({
   claimsByItem,
   participants,
   participantLabelById,
+  headerActions,
   isDesktop,
   onClaimIdsChange,
   onOpenItemSplit,
 }: SplitListProps) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg font-bold">Split bill</CardTitle>
+      <CardHeader className="space-y-1">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="text-lg font-bold">Split bill</CardTitle>
+          {headerActions}
+        </div>
         <p className="text-sm text-muted-foreground">
           Tag everyone to what they had
         </p>

@@ -39,7 +39,7 @@ export function ReviewTransferStatus({
       >
         {allReviewed
           ? "All members have reviewed"
-          : "Please wait until all members have reviewed before transferring to the bill owner."}
+          : "Please wait until all members have reviewed as your items might be shared with others, affecting your cost"}
       </p>
     </div>
   )
