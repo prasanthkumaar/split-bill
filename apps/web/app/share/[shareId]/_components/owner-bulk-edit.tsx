@@ -261,7 +261,7 @@ export function OwnerBulkEdit({
       <Button
         data-testid="bulk-edit-apply"
         size="lg"
-        className="w-full"
+        className="h-12 w-full text-base"
         onClick={handleApply}
         disabled={isApplying}
       >
@@ -271,7 +271,7 @@ export function OwnerBulkEdit({
         data-testid="bulk-edit-back"
         variant="ghost"
         size="lg"
-        className="w-full"
+        className="h-12 w-full text-base"
         onClick={() => setReview(null)}
         disabled={isApplying}
       >
@@ -283,7 +283,7 @@ export function OwnerBulkEdit({
       <Button
         data-testid="bulk-edit-generate"
         size="lg"
-        className="w-full"
+        className="h-12 w-full text-base"
         onClick={handleGenerate}
         disabled={prompt.trim().length === 0 || isGenerating}
       >
@@ -292,7 +292,7 @@ export function OwnerBulkEdit({
       <Button
         variant="ghost"
         size="lg"
-        className="w-full"
+        className="h-12 w-full text-base"
         onClick={() => handleOpenChange(false)}
         disabled={isGenerating}
       >
@@ -375,8 +375,8 @@ export function OwnerBulkEdit({
       ) : (
         <Drawer open={open} onOpenChange={handleOpenChange}>
           <DrawerContent aria-describedby={undefined}>
-            <DrawerHeader>
-              <DrawerTitle>
+            <DrawerHeader className="pb-6">
+              <DrawerTitle className="text-lg">
                 {review ? "Review bulk edit" : "Compose bulk edit"}
               </DrawerTitle>
             </DrawerHeader>
