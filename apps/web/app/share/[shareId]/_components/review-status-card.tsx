@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
+import { ReviewTransferStatus } from "./review-transfer-status"
 
 type ReviewStatusCardProps = {
   participants: {
@@ -61,12 +62,7 @@ export function ReviewStatusCard({
     <section className="space-y-4 md:pr-4">
       <div className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold">Summary</h2>
-            <p className="text-sm text-muted-foreground">
-              {doneCount} of {participants.length} reviewed
-            </p>
-          </div>
+          <h2 className="text-lg font-bold">Summary</h2>
           <div className="flex flex-col items-end gap-1">
             <Button
               type="button"
@@ -83,17 +79,6 @@ export function ReviewStatusCard({
               {showBreakdown ? "Hide breakdown" : "Show breakdown"}
             </Button>
           </div>
-        </div>
-
-        <div className="flex gap-2" data-testid="review-progress">
-          {participants.map((participant) => (
-            <div
-              key={participant.id}
-              className={`h-2 flex-1 rounded-full ${
-                participant.doneAt !== null ? "bg-primary" : "bg-muted"
-              }`}
-            />
-          ))}
         </div>
       </div>
 
@@ -186,7 +171,7 @@ export function ReviewStatusCard({
 
       <Separator />
 
-      <div className="space-y-3 pb-6">
+      <div className="space-y-4 pb-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
           <span className="font-medium">Bill total</span>
           <span className="text-right font-semibold tabular-nums">
@@ -204,6 +189,11 @@ export function ReviewStatusCard({
             <span />
           </div>
         ) : null}
+
+        <ReviewTransferStatus
+          doneCount={doneCount}
+          participantCount={participants.length}
+        />
       </div>
     </section>
   )

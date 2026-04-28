@@ -73,6 +73,11 @@ test("guest done state persists across refresh and does not block tagging", asyn
   await expect(guestPage.getByTestId("done-toggle")).toHaveText(
     "I've checked"
   )
+  await expect(
+    guestPage.getByText(
+      "Please wait until all members have reviewed before transferring to the bill owner."
+    )
+  ).toBeVisible()
 
   await guestPage.getByTestId("done-toggle").click()
   await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
@@ -101,7 +106,10 @@ test("guest done state persists across refresh and does not block tagging", asyn
   await context.close()
 })
 
-test("owner can mark done without affecting owner entry", async ({ page }) => {
+test("owner can mark done without affecting owner entry", async ({
+  page,
+  browser,
+}) => {
   const shareUrl = await createSharedBill(page, "Done Owner Test", ["Bob"])
 
   await page.goto(shareUrl)
@@ -111,10 +119,28 @@ test("owner can mark done without affecting owner entry", async ({ page }) => {
     "Owner"
   )
   await expect(page.getByTestId("done-toggle")).toHaveText("I've checked")
+  await expect(
+    page.getByText(
+      "Please wait until all members have reviewed before transferring to the bill owner."
+    )
+  ).toBeVisible()
 
   await page.getByTestId("done-toggle").click()
   await expect(page.getByText("1 of 2 reviewed")).toBeVisible()
   await expect(page.getByTestId("review-participant").first()).toContainText(
     "Reviewed"
   )
+
+  const guestContext = await browser.newContext()
+  const guestPage = await guestContext.newPage()
+  await guestPage.goto(shareUrl)
+  await expect(guestPage.getByText("Who are you?")).toBeVisible({
+    timeout: 10_000,
+  })
+  await guestPage.getByRole("button", { name: "Bob" }).click()
+  await guestPage.getByTestId("done-toggle").click()
+  await expect(guestPage.getByText("2 of 2 reviewed")).toBeVisible()
+  await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
+
+  await guestContext.close()
 })
