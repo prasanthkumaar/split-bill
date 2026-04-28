@@ -381,7 +381,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
                 <Button
                   data-testid="current-participant-trigger"
                   variant="outline"
-                  size="default"
+                  size="lg"
                   className="shrink-0 gap-2"
                   onClick={() => setIdentityDialogOpen(true)}
                 >
@@ -392,7 +392,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
                   data-testid="done-toggle"
                   type="button"
                   aria-pressed={currentParticipant.doneAt !== null}
-                  size="default"
+                  size="lg"
                   className="shrink-0"
                   variant={
                     currentParticipant.doneAt === null && !isTogglingDone
