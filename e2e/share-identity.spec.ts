@@ -17,7 +17,8 @@ async function finishSignIn(page: Page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click()
   const otpInput = page.getByRole("textbox", { name: "Enter verification code" })
   await otpInput.waitFor({ timeout: 10_000 })
-  await expect(otpInput).toBeEnabled()
+  await expect(otpInput).toBeEditable()
+  await page.waitForTimeout(1500)
   await otpInput.pressSequentially(TEST_OTP)
 }
 
