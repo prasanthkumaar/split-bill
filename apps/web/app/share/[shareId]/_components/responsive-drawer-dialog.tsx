@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import type * as React from "react"
 import {
   Dialog,
@@ -51,7 +52,17 @@ export function ResponsiveDrawerDialog({
   bodyClassName,
   footerClassName,
 }: ResponsiveDrawerDialogProps) {
+  const [isMounted, setIsMounted] = useState(false)
   const isDesktop = useMediaQuery("(min-width: 768px)")
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return null
+  }
+
   const useDialog = isDesktop && desktopMode === "dialog"
 
   if (useDialog) {

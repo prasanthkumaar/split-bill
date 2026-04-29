@@ -3,6 +3,7 @@
 import type { Id } from "@convex/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
 import { ResponsiveDrawerDialog } from "./responsive-drawer-dialog"
+import { SelectionIcon } from "./selection-icon"
 
 type IdentityDialogProps = {
   open: boolean
@@ -24,6 +25,9 @@ export function IdentityDialog({
   return (
     <ResponsiveDrawerDialog
       open={open}
+      // Identity stays open until currentParticipantId changes through
+      // onSelectParticipant, because the share page should not be interactive
+      // before someone explicitly chooses who they are.
       title="Who are you?"
       description="Pick your name to start reviewing this bill."
       contentClassName="sm:max-w-md"
@@ -49,51 +53,5 @@ export function IdentityDialog({
         })}
       </div>
     </ResponsiveDrawerDialog>
-  )
-}
-
-function SelectionIcon({ selected }: { selected: boolean }) {
-  if (selected) {
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        className="h-5.5 w-5.5"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r="10"
-          fill="currentColor"
-          className="text-primary"
-        />
-        <path
-          d="M9 12l2 2 4-4"
-          stroke="white"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </svg>
-    )
-  }
-
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      className="h-5.5 w-5.5"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        className="text-muted-foreground/40"
-      />
-    </svg>
   )
 }

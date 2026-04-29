@@ -368,8 +368,6 @@ function getParticipantOptions(
 
   return participants.map((participant) => {
     const duplicateCount = counts.get(participant.name) ?? 0
-    const nextIndex = (nextIndexByName.get(participant.name) ?? 0) + 1
-    nextIndexByName.set(participant.name, nextIndex)
 
     if (participant.role === "owner") {
       return {
@@ -379,6 +377,9 @@ function getParticipantOptions(
     }
 
     if (duplicateCount > 1) {
+      const nextIndex = (nextIndexByName.get(participant.name) ?? 0) + 1
+      nextIndexByName.set(participant.name, nextIndex)
+
       return {
         ...participant,
         label: `${participant.name} (${nextIndex})`,

@@ -61,7 +61,6 @@ export function ItemSplitDialog({
       <div className="space-y-1.5">
         {participants.map((participant) => {
           const isSelected = selectedParticipantIds.includes(participant.id)
-
           return (
             <div
               key={participant.id}

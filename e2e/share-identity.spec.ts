@@ -15,13 +15,10 @@ async function login(page: Page) {
 async function finishSignIn(page: Page) {
   await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
   await page.getByRole("button", { name: "Continue", exact: true }).click()
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .waitFor({ timeout: 10_000 })
-  await page.waitForTimeout(1500)
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .pressSequentially(TEST_OTP)
+  const otpInput = page.getByRole("textbox", { name: "Enter verification code" })
+  await otpInput.waitFor({ timeout: 10_000 })
+  await expect(otpInput).toBeEnabled()
+  await otpInput.pressSequentially(TEST_OTP)
 }
 
 async function createSharedBill(
