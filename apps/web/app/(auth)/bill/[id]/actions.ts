@@ -1,5 +1,3 @@
-"use server"
-
 import { generateText } from "ai"
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { env } from "@/env"
