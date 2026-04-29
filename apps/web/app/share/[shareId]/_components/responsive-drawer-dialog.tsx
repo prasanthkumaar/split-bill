@@ -103,7 +103,7 @@ export function ResponsiveDrawerDialog({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent aria-describedby={undefined} className={contentClassName}>
+      <DrawerContent className={contentClassName}>
         <DrawerHeader
           className={cn(
             "gap-3 px-4 pt-4 pb-4 text-center md:px-6 md:text-center",
