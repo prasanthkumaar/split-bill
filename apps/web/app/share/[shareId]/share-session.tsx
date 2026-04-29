@@ -42,6 +42,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const [prepareError, setPrepareError] = useState<string | null>(null)
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false)
   const [isTogglingDone, setIsTogglingDone] = useState(false)
+  const [doneError, setDoneError] = useState<string | null>(null)
   const [currentParticipantId, setCurrentParticipantId] =
     useState<Id<"friends"> | null>(null)
 
@@ -297,18 +298,27 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   }
 
   const handleToggleDone = () => {
-    if (!currentParticipant) {
+    if (!currentParticipant || isTogglingDone) {
       return
     }
 
-    setIsTogglingDone(true)
-    void setDone({
-      billId: bill._id,
-      participantId: currentParticipant.id,
-      done: currentParticipant.doneAt === null,
-    }).finally(() => {
-      setIsTogglingDone(false)
-    })
+    void (async () => {
+      setDoneError(null)
+      setIsTogglingDone(true)
+
+      try {
+        await setDone({
+          billId: bill._id,
+          participantId: currentParticipant.id,
+          done: currentParticipant.doneAt === null,
+        })
+      } catch (error) {
+        console.error("Failed to update review state:", error)
+        setDoneError("Unable to update review status. Try again.")
+      } finally {
+        setIsTogglingDone(false)
+      }
+    })()
   }
 
   return (
@@ -332,6 +342,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       </div>
 
       <div className="space-y-4">
+        {doneError ? <p className="text-sm text-red-500">{doneError}</p> : null}
+
         {currentParticipant ? (
           <SplitList
             expandedItems={expandedItems}
@@ -353,6 +365,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
                 <Button
                   data-testid="done-toggle"
                   type="button"
+                  aria-pressed={currentParticipant.doneAt !== null}
                   size="default"
                   className="shrink-0"
                   variant={

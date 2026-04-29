@@ -88,6 +88,13 @@ export const setDone = mutation({
       throw new Error("Participant not found")
     }
 
+    if (participant.userId) {
+      const identity = await ctx.auth.getUserIdentity()
+      if (identity?.subject !== participant.userId) {
+        throw new Error("Forbidden")
+      }
+    }
+
     if (args.done) {
       await ctx.db.patch(args.participantId, { doneAt: Date.now() })
       return

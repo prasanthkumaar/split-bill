@@ -23,6 +23,11 @@ export function ReviewTransferStatus({
         </div>
         <div
           data-testid="review-progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(reviewProgress)}
+          aria-valuetext={`${doneCount} of ${participantCount} reviewed`}
           className="h-px overflow-hidden rounded-full bg-muted"
         >
           <div

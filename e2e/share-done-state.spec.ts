@@ -5,8 +5,23 @@ const TEST_OTP = "424242"
 
 async function login(page: Page) {
   await page.goto("/")
-  await page.waitForURL(/sign-in/, { timeout: 10_000 })
-  await finishSignIn(page)
+  const landingState = await Promise.race([
+    page
+      .waitForURL(/sign-in/, { timeout: 10_000 })
+      .then(() => "sign-in" as const),
+    page
+      .getByRole("heading", { name: "Split Bill" })
+      .waitFor({ timeout: 10_000 })
+      .then(() => "home" as const),
+  ])
+
+  if (landingState === "sign-in") {
+    await finishSignIn(page)
+    await page.waitForURL((url) => !url.pathname.includes("sign-in"), {
+      timeout: 15_000,
+    })
+  }
+
   await expect(page.getByRole("heading", { name: "Split Bill" })).toBeVisible({
     timeout: 15_000,
   })
@@ -15,13 +30,10 @@ async function login(page: Page) {
 async function finishSignIn(page: Page) {
   await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
   await page.getByRole("button", { name: "Continue", exact: true }).click()
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .waitFor({ timeout: 10_000 })
-  await page.waitForTimeout(1500)
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .pressSequentially(TEST_OTP)
+  const otpInput = page.getByRole("textbox", { name: "Enter verification code" })
+  await otpInput.waitFor({ timeout: 10_000 })
+  await expect(otpInput).toBeEditable()
+  await otpInput.pressSequentially(TEST_OTP)
 }
 
 async function createSharedBill(
@@ -69,46 +81,48 @@ test("guest done state persists across refresh and does not block tagging", asyn
   const shareUrl = await createSharedBill(page, "Done Guest Test", ["Bob"])
   const { context, page: guestPage } = await openGuestPage(browser, shareUrl)
 
-  await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Approve")
-  await expect(
-    guestPage.getByText(
-      "Please wait until everyone has reviewed, shared items may still affect your total."
-    )
-  ).toBeVisible()
+  try {
+    await guestPage.getByRole("button", { name: "Bob" }).click()
+    await expect(guestPage.getByTestId("done-toggle")).toHaveText("Approve")
+    await expect(
+      guestPage.getByText(
+        "Please wait until everyone has reviewed, shared items may still affect your total."
+      )
+    ).toBeVisible()
 
-  await guestPage.getByTestId("done-toggle").click()
-  await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
-  await expect(
-    guestPage.getByTestId("review-participant").first()
-  ).toContainText("Reviewed")
+    await guestPage.getByTestId("done-toggle").click()
+    await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
+    await expect(
+      guestPage.getByTestId("review-participant").first()
+    ).toContainText("Reviewed")
 
-  const laksaCombobox = guestPage.getByPlaceholder("Add people...").first()
-  await laksaCombobox.fill("Bob")
-  await guestPage.getByRole("option", { name: "Bob" }).click()
-  await expect(guestPage.getByText("$18.00").first()).toBeVisible()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
+    const laksaCombobox = guestPage.getByPlaceholder("Add people...").first()
+    await laksaCombobox.fill("Bob")
+    await guestPage.getByRole("option", { name: "Bob" }).click()
+    await expect(guestPage.getByText("$18.00").first()).toBeVisible()
+    await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
 
-  await guestPage.reload()
-  await expect(guestPage.getByText("Who are you?")).toBeVisible({
-    timeout: 10_000,
-  })
-  await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
-  await expect(
-    guestPage.getByTestId("review-participant").first()
-  ).toContainText("Reviewed")
-  await expect(guestPage.getByText("$18.00").first()).toBeVisible()
+    await guestPage.reload()
+    await expect(guestPage.getByText("Who are you?")).toBeVisible({
+      timeout: 10_000,
+    })
+    await guestPage.getByRole("button", { name: "Bob" }).click()
+    await expect(guestPage.getByText("1 of 2 reviewed")).toBeVisible()
+    await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
+    await expect(
+      guestPage.getByTestId("review-participant").first()
+    ).toContainText("Reviewed")
+    await expect(guestPage.getByText("$18.00").first()).toBeVisible()
 
-  await guestPage.getByTestId("done-toggle").click()
-  await expect(guestPage.getByText("0 of 2 reviewed")).toBeVisible()
-  await expect(guestPage.getByTestId("done-toggle")).toHaveText("Approve")
-  await expect(
-    guestPage.getByTestId("review-participant").first()
-  ).toContainText("Pending")
-
-  await context.close()
+    await guestPage.getByTestId("done-toggle").click()
+    await expect(guestPage.getByText("0 of 2 reviewed")).toBeVisible()
+    await expect(guestPage.getByTestId("done-toggle")).toHaveText("Approve")
+    await expect(
+      guestPage.getByTestId("review-participant").first()
+    ).toContainText("Pending")
+  } finally {
+    await context.close()
+  }
 })
 
 test("owner can mark done without affecting owner entry", async ({
@@ -138,14 +152,17 @@ test("owner can mark done without affecting owner entry", async ({
 
   const guestContext = await browser.newContext()
   const guestPage = await guestContext.newPage()
-  await guestPage.goto(shareUrl)
-  await expect(guestPage.getByText("Who are you?")).toBeVisible({
-    timeout: 10_000,
-  })
-  await guestPage.getByRole("button", { name: "Bob" }).click()
-  await guestPage.getByTestId("done-toggle").click()
-  await expect(guestPage.getByText("2 of 2 reviewed")).toBeVisible()
-  await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
 
-  await guestContext.close()
+  try {
+    await guestPage.goto(shareUrl)
+    await expect(guestPage.getByText("Who are you?")).toBeVisible({
+      timeout: 10_000,
+    })
+    await guestPage.getByRole("button", { name: "Bob" }).click()
+    await guestPage.getByTestId("done-toggle").click()
+    await expect(guestPage.getByText("2 of 2 reviewed")).toBeVisible()
+    await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
+  } finally {
+    await guestContext.close()
+  }
 })
