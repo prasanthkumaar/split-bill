@@ -8,6 +8,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
+import { useForm } from "react-hook-form"
 import { generateBulkEdit } from "../actions"
 import type { BulkEditResult } from "../schema"
 import { ResponsiveDrawerDialog } from "./responsive-drawer-dialog"
@@ -27,6 +28,10 @@ type OwnerBulkEditProps = {
   }[]
 }
 
+type BulkEditFormValues = {
+  instructions: string
+}
+
 export function OwnerBulkEdit({
   billId,
   lineItems,
@@ -35,20 +40,25 @@ export function OwnerBulkEdit({
 }: OwnerBulkEditProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const applyBulkEdit = useMutation(api.sharing.applyBulkEdit)
+  const { register, setValue, watch, reset } = useForm<BulkEditFormValues>({
+    defaultValues: {
+      instructions: "",
+    },
+  })
 
   const [open, setOpen] = useState(false)
-  const [prompt, setPrompt] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [review, setReview] = useState<BulkEditResult | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
   const requestVersionRef = useRef(0)
+  const prompt = watch("instructions")
 
   const resetComposer = () => {
     requestVersionRef.current += 1
     setError(null)
     setReview(null)
-    setPrompt("")
+    reset()
     setIsGenerating(false)
     setIsApplying(false)
   }
@@ -157,8 +167,7 @@ export function OwnerBulkEdit({
       <Textarea
         data-testid="bulk-edit-prompt"
         placeholder="Example: Put the laksa on Bob, split the teas between Alice and me."
-        value={prompt}
-        onChange={(event) => setPrompt(event.target.value)}
+        {...register("instructions")}
       />
 
       <div className="divide-y overflow-hidden rounded-lg border">
@@ -169,7 +178,7 @@ export function OwnerBulkEdit({
             variant="ghost"
             size="lg"
             className="h-auto w-full justify-start rounded-none border-0 px-4 py-4 text-left whitespace-normal shadow-none"
-            onClick={() => setPrompt(suggestion)}
+            onClick={() => setValue("instructions", suggestion)}
           >
             {suggestion}
           </Button>
