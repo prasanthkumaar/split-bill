@@ -8,24 +8,33 @@ import {
 } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { UserPlus, X } from "lucide-react"
+import { useForm } from "react-hook-form"
 
 type FriendsCardProps = {
   friends: Doc<"friends">[] | undefined
   claimsByFriend: Map<string, number>
-  newFriendName: string
-  onNewFriendNameChange: (value: string) => void
-  onAddFriend: () => void
+  onAddFriend: (name: string) => Promise<void> | void
   onDeleteFriend: (friend: Doc<"friends">, claimCount: number) => void
+}
+
+type FriendsFormValues = {
+  name: string
 }
 
 export function FriendsCard({
   friends,
   claimsByFriend,
-  newFriendName,
-  onNewFriendNameChange,
   onAddFriend,
   onDeleteFriend,
 }: FriendsCardProps) {
+  const { register, handleSubmit, reset, watch } = useForm<FriendsFormValues>({
+    defaultValues: {
+      name: "",
+    },
+  })
+
+  const newFriendName = watch("name")
+
   return (
     <Card className="mb-4">
       <CardHeader>
@@ -38,6 +47,8 @@ export function FriendsCard({
             <Button
               variant="ghost"
               size="icon"
+              type="button"
+              aria-label={`Remove ${friend.name}`}
               onClick={() =>
                 onDeleteFriend(friend, claimsByFriend.get(friend._id) ?? 0)
               }
@@ -47,18 +58,21 @@ export function FriendsCard({
           </div>
         ))}
         <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            onAddFriend()
-          }}
+          onSubmit={handleSubmit(async ({ name }) => {
+            const trimmedName = name.trim()
+            if (!trimmedName) return
+            await onAddFriend(trimmedName)
+            reset()
+          })}
           className="flex gap-2"
         >
-          <Input
-            placeholder="Friend's name"
-            value={newFriendName}
-            onChange={(event) => onNewFriendNameChange(event.target.value)}
-          />
-          <Button type="submit" size="icon" disabled={!newFriendName.trim()}>
+          <Input placeholder="Friend's name" {...register("name")} />
+          <Button
+            type="submit"
+            size="icon"
+            aria-label="Add friend"
+            disabled={!newFriendName.trim()}
+          >
             <UserPlus className="h-4 w-4" />
           </Button>
         </form>

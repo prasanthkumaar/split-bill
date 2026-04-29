@@ -25,24 +25,32 @@ export function TotalsCard({
       <Card className="mb-4">
         <CardContent className="grid grid-cols-2 gap-4 py-4">
           <div>
-            <Label className="text-xs">Tax</Label>
+            <Label htmlFor="tax-input" className="text-xs">
+              Tax
+            </Label>
             <Input
+              id="tax-input"
               key={`tax-${tax}`}
               type="number"
               step="0.01"
               defaultValue={tax.toFixed(2)}
-              onBlur={(event) => onTaxBlur(Number(event.target.value) || 0)}
+              onBlur={(event) =>
+                onTaxBlur(Math.max(0, Number(event.target.value) || 0))
+              }
             />
           </div>
           <div>
-            <Label className="text-xs">Service Charge</Label>
+            <Label htmlFor="service-charge-input" className="text-xs">
+              Service Charge
+            </Label>
             <Input
+              id="service-charge-input"
               key={`sc-${serviceCharge}`}
               type="number"
               step="0.01"
               defaultValue={serviceCharge.toFixed(2)}
               onBlur={(event) =>
-                onServiceChargeBlur(Number(event.target.value) || 0)
+                onServiceChargeBlur(Math.max(0, Number(event.target.value) || 0))
               }
             />
           </div>

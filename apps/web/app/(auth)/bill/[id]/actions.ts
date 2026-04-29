@@ -9,8 +9,31 @@ import {
   type ParseReceiptInput,
 } from "./schema"
 
+const ALLOWED_RECEIPT_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+])
+const MAX_RECEIPT_BASE64_CHARS = 10 * 1024 * 1024
+
+export class ReceiptParseError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ReceiptParseError"
+  }
+}
+
 export async function parseReceipt(input: ParseReceiptInput) {
   const { imageBase64, mimeType } = parseReceiptInputSchema.parse(input)
+
+  if (!ALLOWED_RECEIPT_MIME_TYPES.has(mimeType)) {
+    throw new ReceiptParseError("Unsupported image type")
+  }
+
+  if (imageBase64.length > MAX_RECEIPT_BASE64_CHARS) {
+    throw new ReceiptParseError("Receipt image is too large")
+  }
 
   const anthropic = createAnthropic({
     baseURL: env.ANTHROPIC_BASE_URL,
@@ -53,5 +76,17 @@ Rules:
     ],
   })
 
-  return parseReceiptResultSchema.parse(JSON.parse(result.text))
+  let parsedJson: unknown
+  try {
+    parsedJson = JSON.parse(result.text)
+  } catch {
+    throw new ReceiptParseError("Model returned invalid JSON")
+  }
+
+  const parsedResult = parseReceiptResultSchema.safeParse(parsedJson)
+  if (!parsedResult.success) {
+    throw new ReceiptParseError("Failed to parse receipt data from image")
+  }
+
+  return parsedResult.data
 }

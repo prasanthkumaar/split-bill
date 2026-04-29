@@ -2,7 +2,10 @@ import { useMutation as useConvexMutation } from "convex/react"
 import { useMutation } from "@tanstack/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import type { ParseReceiptResult } from "../schema"
+import {
+  parseReceiptResultSchema,
+  type ParseReceiptResult,
+} from "../schema"
 
 const SUPPORTED_RECEIPT_MIME_TYPES = new Set([
   "image/jpeg",
@@ -34,14 +37,14 @@ export function useUploadReceipt(billId: Id<"bills">) {
       const imageBase64 = await toBase64(normalizedFile)
       const parsed = await requestReceiptParse(imageBase64, normalizedFile.type)
 
-      if (parsed.items?.length) {
+      if (parsed.items.length) {
         await replaceAllItems({ billId, items: parsed.items })
       }
       if (parsed.tax || parsed.serviceCharge) {
         await updateBill({
           id: billId,
-          tax: parsed.tax ?? 0,
-          serviceCharge: parsed.serviceCharge ?? 0,
+          tax: parsed.tax,
+          serviceCharge: parsed.serviceCharge,
         })
       }
     },
@@ -164,5 +167,6 @@ async function requestReceiptParse(
     throw new Error("Failed to parse receipt")
   }
 
-  return res.json()
+  const data = await res.json()
+  return parseReceiptResultSchema.parse(data)
 }

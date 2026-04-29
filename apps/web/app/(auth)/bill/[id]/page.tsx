@@ -41,10 +41,6 @@ export default function BillPage() {
   const removeFriend = useMutation(api.friends.remove)
   const { mutate: uploadReceipt, isPending: uploading } = useUploadReceipt(billId)
 
-  const [newItemName, setNewItemName] = useState("")
-  const [newItemQty, setNewItemQty] = useState("1")
-  const [newItemPrice, setNewItemPrice] = useState("")
-  const [newFriendName, setNewFriendName] = useState("")
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "friend" | "lineItem"
@@ -89,36 +85,46 @@ export default function BillPage() {
       ? `${window.location.origin}/share/${bill.shareId}`
       : ""
 
-  const handleAddItem = async () => {
-    if (!newItemName.trim() || !newItemPrice) return
+  const handleAddItem = async ({
+    name,
+    quantity,
+    unitPrice,
+  }: {
+    name: string
+    quantity: number
+    unitPrice: number
+  }) => {
     await addItem({
       billId,
-      name: newItemName.trim(),
-      quantity: Number(newItemQty) || 1,
-      unitPrice: Number(newItemPrice),
+      name,
+      quantity,
+      unitPrice,
     })
-    setNewItemName("")
-    setNewItemQty("1")
-    setNewItemPrice("")
   }
 
-  const handleAddFriend = async () => {
-    if (!newFriendName.trim()) return
-    await addFriend({ billId, name: newFriendName.trim() })
-    setNewFriendName("")
+  const handleAddFriend = async (name: string) => {
+    await addFriend({ billId, name })
   }
 
   const handleShare = async () => {
     await updateBill({ id: billId, status: "shared" })
-    await navigator.clipboard.writeText(shareUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      console.error("Failed to copy share URL after sharing:", error)
+    }
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(shareUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      console.error("Failed to copy share URL:", error)
+    }
   }
 
   const handleDeleteItem = (item: Doc<"lineItems">, claimCount: number) => {
@@ -172,12 +178,6 @@ export default function BillPage() {
       <LineItemsCard
         lineItems={lineItems}
         claimsByItem={claimsByItem}
-        newItemName={newItemName}
-        newItemQty={newItemQty}
-        newItemPrice={newItemPrice}
-        onNewItemNameChange={setNewItemName}
-        onNewItemQtyChange={setNewItemQty}
-        onNewItemPriceChange={setNewItemPrice}
         onAddItem={handleAddItem}
         onUpdateItem={updateItem}
         onDeleteItem={handleDeleteItem}
@@ -197,8 +197,6 @@ export default function BillPage() {
       <FriendsCard
         friends={friends}
         claimsByFriend={claimsByFriend}
-        newFriendName={newFriendName}
-        onNewFriendNameChange={setNewFriendName}
         onAddFriend={handleAddFriend}
         onDeleteFriend={handleDeleteFriend}
       />

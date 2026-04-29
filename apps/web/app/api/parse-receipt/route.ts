@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { parseReceipt } from "@/app/(auth)/bill/[id]/actions"
+import {
+  parseReceipt,
+  ReceiptParseError,
+} from "@/app/(auth)/bill/[id]/actions"
 import { parseReceiptInputSchema } from "@/app/(auth)/bill/[id]/schema"
 
 export async function POST(req: NextRequest) {
@@ -13,8 +16,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const parsed = await parseReceipt(body.data)
-    return NextResponse.json(parsed)
+    try {
+      const parsed = await parseReceipt(body.data)
+      return NextResponse.json(parsed)
+    } catch (error) {
+      if (error instanceof ReceiptParseError || error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 422 }
+        )
+      }
+
+      throw error
+    }
   } catch (error) {
     console.error("parse-receipt error:", error)
     return NextResponse.json(

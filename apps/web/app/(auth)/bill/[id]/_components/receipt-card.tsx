@@ -4,6 +4,14 @@ import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Loader2, Upload } from "lucide-react"
 
+const ALLOWED_RECEIPT_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+])
+const MAX_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024
+
 type ReceiptCardProps = {
   receiptUrl?: string | null
   uploading: boolean
@@ -28,6 +36,14 @@ export function ReceiptCard({
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (file) {
+              if (
+                !ALLOWED_RECEIPT_MIME_TYPES.has(file.type) ||
+                file.size > MAX_RECEIPT_UPLOAD_BYTES
+              ) {
+                event.target.value = ""
+                return
+              }
+
               onUploadReceipt(file)
             }
             event.target.value = ""

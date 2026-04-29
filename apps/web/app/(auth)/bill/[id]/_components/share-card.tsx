@@ -40,7 +40,13 @@ export function ShareCard({
           <>
             <div className="flex gap-2">
               <Input value={shareUrl} readOnly className="text-xs" />
-              <Button variant="outline" size="icon" onClick={onCopy}>
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                aria-label={copied ? "Copied link" : "Copy share link"}
+                onClick={onCopy}
+              >
                 {copied ? (
                   <Check className="h-4 w-4" />
                 ) : (
