@@ -30,7 +30,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerItem, setDrawerItem] = useState<DrawerItem>(null)
-  const [drawerSelection, setDrawerSelection] = useState<string[]>([])
+  const [drawerSelection, setDrawerSelection] = useState<Id<"friends">[]>([])
 
   if (data === undefined) {
     return (
@@ -57,7 +57,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const extras = bill.tax + bill.serviceCharge
   const total = subtotal + extras
 
-  const claimsByItem = new Map<string, string[]>()
+  const claimsByItem = new Map<string, Id<"friends">[]>()
   for (const claim of claims) {
     const key = `${claim.lineItemId}:${claim.unitIndex}`
     if (!claimsByItem.has(key)) {
@@ -107,10 +107,10 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     (sum, friendTotal) => sum + friendTotal.subtotal,
     0
   )
-  const unclaimed = subtotal - claimedSubtotal
+  const unclaimed = subtotal - claimedSubtotal + (claimedSubtotal === 0 ? extras : 0)
   const splits = Array.from(friendTotals.entries()).map(([id, friendTotal]) => {
     const proportion = subtotal > 0 ? friendTotal.subtotal / subtotal : 0
-    const extraShare = extras * proportion
+    const extraShare = claimedSubtotal === 0 ? 0 : extras * proportion
 
     return {
       id,
@@ -131,29 +131,31 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   )
 
   const handleClaimChange = (
-    newNames: string[],
-    currentClaimerIds: string[],
+    newIds: Id<"friends">[],
+    currentClaimerIds: Id<"friends">[],
     lineItemId: Id<"lineItems">,
     unitIndex: number
   ) => {
-    const currentNames = currentClaimerIds
-      .map((friendId) => friends.find((friend) => friend._id === friendId)?.name ?? "")
-      .filter(Boolean)
+    const addedId = newIds.find((friendId) => !currentClaimerIds.includes(friendId))
+    const removedId = currentClaimerIds.find((friendId) => !newIds.includes(friendId))
+    const changedId = addedId ?? removedId
 
-    const added = newNames.find((name) => !currentNames.includes(name))
-    const removed = currentNames.find((name) => !newNames.includes(name))
-    const changedName = added ?? removed
-
-    if (!changedName) {
+    if (!changedId) {
       return
     }
 
-    const friendId = friends.find((friend) => friend.name === changedName)?._id
-    if (!friendId) {
-      return
-    }
-
-    toggleClaim({ billId: bill._id, friendId, lineItemId, unitIndex })
+    void (async () => {
+      try {
+        await toggleClaim({
+          billId: bill._id,
+          friendId: changedId,
+          lineItemId,
+          unitIndex,
+        })
+      } catch (error) {
+        console.error("Failed to update claim:", error)
+      }
+    })()
   }
 
   const openDrawer = (
@@ -161,7 +163,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     unitIndex: number,
     name: string,
     price: number,
-    currentClaimerIds: string[]
+    currentClaimerIds: Id<"friends">[]
   ) => {
     setDrawerItem({ lineItemId, unitIndex, name, price })
     setDrawerSelection([...currentClaimerIds])
@@ -173,16 +175,22 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       return
     }
 
-    setClaimers({
-      billId: bill._id,
-      lineItemId: drawerItem.lineItemId,
-      unitIndex: drawerItem.unitIndex,
-      friendIds: drawerSelection as Id<"friends">[],
-    })
-    setDrawerOpen(false)
+    void (async () => {
+      try {
+        await setClaimers({
+          billId: bill._id,
+          lineItemId: drawerItem.lineItemId,
+          unitIndex: drawerItem.unitIndex,
+          friendIds: drawerSelection,
+        })
+        setDrawerOpen(false)
+      } catch (error) {
+        console.error("Failed to save split selection:", error)
+      }
+    })()
   }
 
-  const toggleDrawerFriend = (friendId: string) => {
+  const toggleDrawerFriend = (friendId: Id<"friends">) => {
     setDrawerSelection((currentSelection) =>
       currentSelection.includes(friendId)
         ? currentSelection.filter((id) => id !== friendId)
@@ -209,7 +217,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         claimsByItem={claimsByItem}
         friends={friends}
         isDesktop={isDesktop}
-        onClaimNamesChange={handleClaimChange}
+        onClaimIdsChange={handleClaimChange}
         onOpenItemSplit={openDrawer}
       />
 

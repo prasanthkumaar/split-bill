@@ -17,12 +17,12 @@ type SplitListProps = {
     unitIndex: number
     displayPrice: number
   })[]
-  claimsByItem: Map<string, string[]>
+  claimsByItem: Map<string, Id<"friends">[]>
   friends: Doc<"friends">[]
   isDesktop: boolean
-  onClaimNamesChange: (
-    newNames: string[],
-    currentClaimerIds: string[],
+  onClaimIdsChange: (
+    newIds: Id<"friends">[],
+    currentClaimerIds: Id<"friends">[],
     lineItemId: Id<"lineItems">,
     unitIndex: number
   ) => void
@@ -31,7 +31,7 @@ type SplitListProps = {
     unitIndex: number,
     name: string,
     price: number,
-    currentClaimerIds: string[]
+    currentClaimerIds: Id<"friends">[]
   ) => void
 }
 
@@ -40,7 +40,7 @@ export function SplitList({
   claimsByItem,
   friends,
   isDesktop,
-  onClaimNamesChange,
+  onClaimIdsChange,
   onOpenItemSplit,
 }: SplitListProps) {
   return (
@@ -68,15 +68,12 @@ export function SplitList({
 
                 {isDesktop ? (
                   <Combobox
-                    items={friends.map((friend) => friend.name)}
+                    items={friends.map((friend) => friend._id)}
                     multiple
-                    value={claimerIds.map(
-                      (friendId) =>
-                        friends.find((friend) => friend._id === friendId)?.name ?? ""
-                    )}
-                    onValueChange={(names: string[]) =>
-                      onClaimNamesChange(
-                        names,
+                    value={claimerIds}
+                    onValueChange={(ids: string[]) =>
+                      onClaimIdsChange(
+                        ids as Id<"friends">[],
                         claimerIds,
                         item._id,
                         item.unitIndex
@@ -100,9 +97,10 @@ export function SplitList({
                     <ComboboxContent>
                       <ComboboxEmpty>No one found.</ComboboxEmpty>
                       <ComboboxList>
-                        {(comboboxItem) => (
-                          <ComboboxItem key={comboboxItem} value={comboboxItem}>
-                            {comboboxItem}
+                        {(friendId) => (
+                          <ComboboxItem key={friendId} value={friendId}>
+                            {friends.find((friend) => friend._id === friendId)?.name ??
+                              friendId}
                           </ComboboxItem>
                         )}
                       </ComboboxList>
