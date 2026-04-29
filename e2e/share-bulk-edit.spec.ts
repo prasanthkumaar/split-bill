@@ -244,8 +244,27 @@ const TEST_OTP = "424242"
 
 async function login(page: Page) {
   await page.goto("/")
-  await page.waitForURL(/sign-in/, { timeout: 10_000 })
-  await finishSignIn(page)
+  const needsSignIn = await page
+    .getByRole("textbox", { name: "Email address" })
+    .waitFor({ timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false)
+
+  if (needsSignIn) {
+    await finishSignIn(page)
+    await Promise.race([
+      page
+        .waitForURL((url) => !url.pathname.includes("sign-in"), {
+          timeout: 15_000,
+        })
+        .catch(() => null),
+      page
+        .getByRole("heading", { name: "Split Bill" })
+        .waitFor({ timeout: 15_000 })
+        .catch(() => null),
+    ])
+  }
+
   await expect(page.getByRole("heading", { name: "Split Bill" })).toBeVisible({
     timeout: 15_000,
   })
@@ -254,13 +273,10 @@ async function login(page: Page) {
 async function finishSignIn(page: Page) {
   await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
   await page.getByRole("button", { name: "Continue", exact: true }).click()
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .waitFor({ timeout: 10_000 })
-  await page.waitForTimeout(1500)
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .pressSequentially(TEST_OTP)
+  const otpInput = page.getByRole("textbox", { name: "Enter verification code" })
+  await otpInput.waitFor({ timeout: 10_000 })
+  await expect(otpInput).toBeEditable()
+  await otpInput.pressSequentially(TEST_OTP)
 }
 
 async function createSharedBill(
@@ -312,6 +328,21 @@ test("regular participants never see the bulk edit trigger", async ({
   await expect(guestPage.getByTestId("bulk-edit-trigger")).toHaveCount(0)
 
   await context.close()
+})
+
+test("owners cannot use bulk edit when participant names are duplicated", async ({
+  page,
+}) => {
+  const shareUrl = await createSharedBill(page, "Bulk Edit Duplicate Test", [
+    "Bob",
+    "bob",
+  ])
+  await page.goto(shareUrl)
+
+  await expect(page.getByTestId("bulk-edit-trigger")).toBeDisabled()
+  await expect(
+    page.getByText("Bulk edit requires unique participant names.")
+  ).toBeVisible()
 })
 
 test("owners can compose, review, go back, and apply a bulk edit", async ({

@@ -53,6 +53,7 @@ export function OwnerBulkEdit({
   const [isApplying, setIsApplying] = useState(false)
   const requestVersionRef = useRef(0)
   const prompt = watch("instructions")
+  const hasDuplicateParticipantNames = hasRepeatedParticipantNames(participants)
 
   const resetComposer = () => {
     requestVersionRef.current += 1
@@ -71,7 +72,11 @@ export function OwnerBulkEdit({
   }
 
   const handleGenerate = async () => {
-    if (prompt.trim().length === 0 || isGenerating) {
+    if (
+      prompt.trim().length === 0 ||
+      hasDuplicateParticipantNames ||
+      isGenerating
+    ) {
       return
     }
 
@@ -339,15 +344,28 @@ export function OwnerBulkEdit({
 
   return (
     <>
-      <Button
-        data-testid="bulk-edit-trigger"
-        className="w-fit shrink-0"
-        size="lg"
-        variant="outline"
-        onClick={() => setOpen(true)}
-      >
-        Bulk edit
-      </Button>
+      <div className="flex flex-col items-end gap-1">
+        <Button
+          data-testid="bulk-edit-trigger"
+          className="w-fit shrink-0"
+          size="lg"
+          variant="outline"
+          onClick={() => setOpen(true)}
+          disabled={hasDuplicateParticipantNames}
+          title={
+            hasDuplicateParticipantNames
+              ? "Bulk edit requires unique participant names"
+              : undefined
+          }
+        >
+          Bulk edit
+        </Button>
+        {hasDuplicateParticipantNames ? (
+          <p className="max-w-56 text-right text-xs text-muted-foreground">
+            Bulk edit requires unique participant names.
+          </p>
+        ) : null}
+      </div>
 
       <ResponsiveDrawerDialog
         open={open}
@@ -372,3 +390,20 @@ const BULK_EDIT_SUGGESTIONS = [
   "Split all the food equally",
   "Split all the food and drinks equally",
 ]
+
+function hasRepeatedParticipantNames(
+  participants: OwnerBulkEditProps["participants"]
+) {
+  const seenNames = new Set<string>()
+
+  for (const participant of participants) {
+    const normalisedName = participant.name.trim().toLocaleLowerCase()
+    if (seenNames.has(normalisedName)) {
+      return true
+    }
+
+    seenNames.add(normalisedName)
+  }
+
+  return false
+}
