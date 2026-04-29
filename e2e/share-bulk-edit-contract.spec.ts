@@ -151,6 +151,56 @@ test("split all the drinks equally keeps food as-is and shares drinks across eve
   ).toEqual(["Bob", "Alice", "Charlie"])
 })
 
+test("split all the drinks equally does not treat iced cake as a drink", () => {
+  const result = buildDeterministicBulkEditResult(
+    prepareBulkEditInput({
+      instructions: "split all the drinks equally",
+      participants: [
+        { id: "participant-bob", name: "Bob" },
+        { id: "participant-alice", name: "Alice" },
+      ],
+      lineItems: [
+        {
+          id: "line-item-cake",
+          name: "Iced cake",
+          quantity: 1,
+          unitPrice: 8,
+        },
+        {
+          id: "line-item-tea",
+          name: "Iced tea",
+          quantity: 1,
+          unitPrice: 4,
+        },
+      ],
+      currentAssignments: [
+        {
+          lineItemId: "line-item-cake",
+          unitIndex: 0,
+          participantNames: ["Bob"],
+        },
+        {
+          lineItemId: "line-item-tea",
+          unitIndex: 0,
+          participantNames: ["Alice"],
+        },
+      ],
+    })
+  )
+
+  expect(result).not.toBeNull()
+  expect(
+    result?.assignments.find(
+      (assignment) => assignment.lineItemId === "line-item-cake"
+    )?.participantNames
+  ).toEqual(["Bob"])
+  expect(
+    result?.assignments.find(
+      (assignment) => assignment.lineItemId === "line-item-tea"
+    )?.participantNames
+  ).toEqual(["Bob", "Alice"])
+})
+
 test("remove all clears every unit", () => {
   const result = buildDeterministicBulkEditResult(buildInput("remove all"))
 

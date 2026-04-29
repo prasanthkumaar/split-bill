@@ -309,10 +309,19 @@ function buildBulkEditResult(
       return {
         lineItemId: unit.lineItemId,
         lineItemName: unit.lineItemName,
-        participantIds: participantNames.map(
-          (participantName) =>
-            participantIdByName.get(normaliseParticipantName(participantName))!
-        ),
+        participantIds: participantNames.map((participantName) => {
+          const participantId = participantIdByName.get(
+            normaliseParticipantName(participantName)
+          )
+
+          if (!participantId) {
+            throw new Error(
+              `Unknown participant in bulk edit: ${participantName}`
+            )
+          }
+
+          return participantId
+        }),
         participantNames,
         unitIndex: unit.unitIndex,
         unitPrice: unit.unitPrice,
@@ -413,9 +422,10 @@ function isDrinkLineItem(lineItemName: string) {
   return DRINK_KEYWORDS.some((keyword) => normalisedName.includes(keyword))
 }
 
+// This is a heuristic for the deterministic shortcuts only. If a line item does
+// not match cleanly here, the instructions fall back to the model path instead.
 const DRINK_KEYWORDS = [
   "beer",
-  "bottle",
   "cappuccino",
   "chai",
   "cocktail",
@@ -427,15 +437,16 @@ const DRINK_KEYWORDS = [
   "fanta",
   "gin",
   "heineken",
-  "iced",
+  "iced coffee",
+  "iced tea",
   "juice",
   "latte",
   "lemonade",
   "matcha",
   "milk tea",
+  "milkshake",
   "mocha",
   "pepsi",
-  "shake",
   "smoothie",
   "soda",
   "sprite",

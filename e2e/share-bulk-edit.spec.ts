@@ -77,24 +77,24 @@ test("parseBulkEditResult returns a fully validated review payload", () => {
     {
       lineItemId: "line-item-laksa",
       lineItemName: "Laksa",
-      participantId: "participant-bob",
-      participantName: "Bob",
+      participantIds: ["participant-bob"],
+      participantNames: ["Bob"],
       unitIndex: 0,
       unitPrice: 18,
     },
     {
       lineItemId: "line-item-tea",
       lineItemName: "Iced tea",
-      participantId: "participant-alice",
-      participantName: "Alice",
+      participantIds: ["participant-alice"],
+      participantNames: ["Alice"],
       unitIndex: 0,
       unitPrice: 4,
     },
     {
       lineItemId: "line-item-tea",
       lineItemName: "Iced tea",
-      participantId: "participant-alice",
-      participantName: "Alice",
+      participantIds: ["participant-alice"],
+      participantNames: ["Alice"],
       unitIndex: 1,
       unitPrice: 4,
     },
@@ -189,17 +189,17 @@ test("validateBulkEditAssignments rejects foreign ids before claims change", () 
       assignments: [
         {
           lineItemId: "line-item-laksa",
-          participantId: "participant-bob",
+          participantIds: ["participant-bob"],
           unitIndex: 0,
         },
         {
           lineItemId: "line-item-tea",
-          participantId: "participant-alice",
+          participantIds: ["participant-alice"],
           unitIndex: 0,
         },
         {
           lineItemId: "line-item-foreign",
-          participantId: "participant-alice",
+          participantIds: ["participant-alice"],
           unitIndex: 0,
         },
       ],
@@ -216,17 +216,17 @@ test("validateBulkEditAssignments rejects foreign ids before claims change", () 
       assignments: [
         {
           lineItemId: "line-item-laksa",
-          participantId: "participant-bob",
+          participantIds: ["participant-bob"],
           unitIndex: 0,
         },
         {
           lineItemId: "line-item-tea",
-          participantId: "participant-alice",
+          participantIds: ["participant-alice"],
           unitIndex: 0,
         },
         {
           lineItemId: "line-item-tea",
-          participantId: "participant-foreign",
+          participantIds: ["participant-foreign"],
           unitIndex: 1,
         },
       ],

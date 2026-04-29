@@ -11,6 +11,8 @@ import {
   type PreparedBulkEditInput,
 } from "./schema"
 
+const BULK_EDIT_TIMEOUT_MS = 15_000
+
 export async function generateBulkEdit(input: BulkEditInput) {
   const preparedInput = prepareBulkEditInput(input)
   const deterministicResult = buildDeterministicBulkEditResult(preparedInput)
@@ -23,22 +25,39 @@ export async function generateBulkEdit(input: BulkEditInput) {
     apiKey: env.ANTHROPIC_API_KEY,
   })
 
-  const result = await generateText({
-    model: anthropic(env.ANTHROPIC_MODEL),
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: buildBulkEditPrompt(preparedInput),
-          },
-        ],
-      },
-    ],
-  })
+  try {
+    const result = await generateText({
+      model: anthropic(env.ANTHROPIC_MODEL),
+      timeout: BULK_EDIT_TIMEOUT_MS,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: buildBulkEditPrompt(preparedInput),
+            },
+          ],
+        },
+      ],
+    })
 
-  return parseBulkEditResult(preparedInput, result.text)
+    return parseBulkEditResult(preparedInput, result.text)
+  } catch (error) {
+    console.error("Bulk edit generation failed:", error)
+
+    if (error instanceof Error) {
+      if (error.message === "Bulk edit model returned invalid JSON") {
+        throw error
+      }
+
+      if (error.name === "AbortError") {
+        throw new Error("Bulk edit generation timed out")
+      }
+    }
+
+    throw new Error("Bulk edit generation failed")
+  }
 }
 
 function buildBulkEditPrompt(input: PreparedBulkEditInput) {
