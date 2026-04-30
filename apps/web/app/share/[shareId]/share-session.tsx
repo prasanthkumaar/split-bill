@@ -107,10 +107,11 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     (sum, friendTotal) => sum + friendTotal.subtotal,
     0
   )
-  const unclaimed = subtotal - claimedSubtotal + (claimedSubtotal === 0 ? extras : 0)
+  const assignedExtras = subtotal > 0 ? extras * (claimedSubtotal / subtotal) : 0
+  const unclaimed = subtotal - claimedSubtotal + (extras - assignedExtras)
   const splits = Array.from(friendTotals.entries()).map(([id, friendTotal]) => {
     const proportion = subtotal > 0 ? friendTotal.subtotal / subtotal : 0
-    const extraShare = claimedSubtotal === 0 ? 0 : extras * proportion
+    const extraShare = extras * proportion
 
     return {
       id,

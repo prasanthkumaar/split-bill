@@ -232,6 +232,9 @@ test.describe.serial("Bill splitting flows", () => {
     // 14. Verify split: Alice has Steak ($40)
     // Alice subtotal $40, proportion = 40/60 = 2/3, extras = 10 * 2/3 = $6.67, total = $46.67
     await expect(page.getByText("$46.67").first()).toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.locator("div").filter({ hasText: /^Unaccounted\$23\.33$/ })
+    ).toBeVisible({ timeout: 5_000 });
 
     // 15. Tag Alice on Salad too (Steak placeholder gone, so Salad is now first)
     const saladCombobox = page.getByPlaceholder("Add people...").first();

@@ -8,7 +8,7 @@ export function SelectionIcon({ selected }: SelectionIconProps) {
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
-        className="h-5.5 w-5.5"
+        className="h-[22px] w-[22px]"
       >
         <circle
           cx="12"
@@ -33,7 +33,7 @@ export function SelectionIcon({ selected }: SelectionIconProps) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      className="h-5.5 w-5.5"
+      className="h-[22px] w-[22px]"
     >
       <circle
         cx="12"
