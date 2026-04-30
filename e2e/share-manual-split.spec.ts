@@ -141,16 +141,19 @@ test("Share page keeps duplicate participant claims separate on desktop", async 
   const shareUrl = await page.locator("input[readonly]").inputValue()
   await page.goto(shareUrl)
 
-  const toolbar = page.getByRole("toolbar").first()
+  const toolbar = page.locator("[data-slot='combobox-chips']").first()
   const comboboxInput = toolbar.locator("input")
   await comboboxInput.fill("Alex")
-  await page.getByRole("option", { name: "Alex" }).click()
+  await page.getByRole("option", { name: "Alex (1)" }).click()
+  await expect(
+    toolbar
+      .locator("[data-slot='combobox-chip']")
+      .filter({ hasText: "Alex (1)" })
+  ).toHaveCount(1)
+
   await comboboxInput.fill("Alex")
   await page.getByRole("option", { name: "Alex (2)" }).click()
 
-  await expect(
-    toolbar.locator("[data-slot='combobox-chip']").filter({ hasText: "Alex" })
-  ).toHaveCount(1)
   await expect(
     toolbar
       .locator("[data-slot='combobox-chip']")
@@ -164,7 +167,9 @@ test("Share page keeps duplicate participant claims separate on desktop", async 
     .click()
 
   await expect(
-    toolbar.locator("[data-slot='combobox-chip']").filter({ hasText: "Alex" })
+    toolbar
+      .locator("[data-slot='combobox-chip']")
+      .filter({ hasText: "Alex (1)" })
   ).toHaveCount(1)
   await expect(
     toolbar

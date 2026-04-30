@@ -76,6 +76,9 @@ export function SplitList({
                   <Combobox
                     items={participants.map((participant) => participant.id)}
                     multiple
+                    itemToStringLabel={(participantId) =>
+                      participantLabelById.get(participantId) ?? ""
+                    }
                     value={claimerIds}
                     onValueChange={(participantIds: Id<"friends">[]) =>
                       onClaimIdsChange(participantIds, item._id, item.unitIndex)
