@@ -18,7 +18,13 @@ type SplitListProps = {
     displayPrice: number
   })[]
   claimsByItem: Map<string, Id<"friends">[]>
-  friends: Doc<"friends">[]
+  participants: {
+    id: Id<"friends">
+    label: string
+    name: string
+    role: "owner" | "guest"
+  }[]
+  participantLabelById: Map<Id<"friends">, string>
   isDesktop: boolean
   onClaimIdsChange: (
     newIds: Id<"friends">[],
@@ -37,7 +43,8 @@ type SplitListProps = {
 export function SplitList({
   expandedItems,
   claimsByItem,
-  friends,
+  participants,
+  participantLabelById,
   isDesktop,
   onClaimIdsChange,
   onOpenItemSplit,
@@ -67,24 +74,22 @@ export function SplitList({
 
                 {isDesktop ? (
                   <Combobox
-                    items={friends.map((friend) => friend._id)}
+                    items={participants.map((participant) => participant.id)}
                     multiple
+                    itemToStringLabel={(participantId) =>
+                      participantLabelById.get(participantId) ?? ""
+                    }
                     value={claimerIds}
-                    onValueChange={(ids: string[]) =>
-                      onClaimIdsChange(
-                        ids as Id<"friends">[],
-                        item._id,
-                        item.unitIndex
-                      )
+                    onValueChange={(participantIds: Id<"friends">[]) =>
+                      onClaimIdsChange(participantIds, item._id, item.unitIndex)
                     }
                   >
                     <ComboboxChips className="mt-2 min-h-9 text-xs">
                       <ComboboxValue>
-                        {claimerIds.map((friendId) => {
-                          const name =
-                            friends.find((friend) => friend._id === friendId)?.name ?? ""
+                        {claimerIds.map((participantId) => {
+                          const label = participantLabelById.get(participantId) ?? ""
                           return (
-                            <ComboboxChip key={friendId}>{name}</ComboboxChip>
+                            <ComboboxChip key={participantId}>{label}</ComboboxChip>
                           )
                         })}
                       </ComboboxValue>
@@ -95,10 +100,9 @@ export function SplitList({
                     <ComboboxContent>
                       <ComboboxEmpty>No one found.</ComboboxEmpty>
                       <ComboboxList>
-                        {(friendId) => (
-                          <ComboboxItem key={friendId} value={friendId}>
-                            {friends.find((friend) => friend._id === friendId)?.name ??
-                              friendId}
+                        {(participantId) => (
+                          <ComboboxItem key={participantId} value={participantId}>
+                            {participantLabelById.get(participantId) ?? ""}
                           </ComboboxItem>
                         )}
                       </ComboboxList>
@@ -119,15 +123,14 @@ export function SplitList({
                     }
                   >
                     {claimerIds.length > 0 ? (
-                      claimerIds.map((friendId) => {
-                        const name =
-                          friends.find((friend) => friend._id === friendId)?.name ?? ""
+                      claimerIds.map((participantId) => {
+                        const label = participantLabelById.get(participantId) ?? ""
                         return (
                           <span
-                            key={friendId}
+                            key={participantId}
                             className="flex h-6 items-center rounded-sm bg-muted px-2 text-sm font-medium dark:bg-indigo-400/20"
                           >
-                            {name}
+                            {label}
                           </span>
                         )
                       })

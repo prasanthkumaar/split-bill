@@ -1,35 +1,89 @@
+import type { UserIdentity } from "convex/server"
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import type { Doc, Id } from "./_generated/dataModel"
+import {
+  mutation,
+  query,
+  type DatabaseReader,
+  type MutationCtx,
+} from "./_generated/server"
 
 export const getShareSession = query({
   args: { shareId: v.string() },
   handler: async (ctx, args) => {
-    const bill = await ctx.db
-      .query("bills")
-      .withIndex("by_shareId", (q) => q.eq("shareId", args.shareId))
-      .unique()
-
+    const bill = await getBillByShareId(ctx.db, args.shareId)
     if (!bill) {
       return null
     }
 
-    const [lineItems, friends, claims, receiptUrl] = await Promise.all([
-      ctx.db
-        .query("lineItems")
-        .withIndex("by_bill", (q) => q.eq("billId", bill._id))
-        .collect(),
-      ctx.db
-        .query("friends")
-        .withIndex("by_bill", (q) => q.eq("billId", bill._id))
-        .collect(),
-      ctx.db
-        .query("claims")
-        .withIndex("by_bill", (q) => q.eq("billId", bill._id))
-        .collect(),
-      bill.imageId ? ctx.storage.getUrl(bill.imageId) : null,
-    ])
+    const identity = await ctx.auth.getUserIdentity()
+    const [lineItems, participantRows, claimRows, receiptUrl] =
+      await Promise.all([
+        ctx.db
+          .query("lineItems")
+          .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+          .collect(),
+        ctx.db
+          .query("friends")
+          .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+          .collect(),
+        ctx.db
+          .query("claims")
+          .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+          .collect(),
+        bill.imageId ? ctx.storage.getUrl(bill.imageId) : null,
+      ])
 
-    return { bill, lineItems, friends, claims, receiptUrl }
+    const participants = participantRows
+      .map((participant) => ({
+        id: participant._id,
+        name: participant.name,
+        role:
+          participant.userId === bill.ownerId
+            ? ("owner" as const)
+            : ("guest" as const),
+        doneAt: participant.doneAt ?? null,
+      }))
+      .sort((left, right) => {
+        if (left.role !== right.role) {
+          return left.role === "owner" ? -1 : 1
+        }
+
+        return left.name.localeCompare(right.name)
+      })
+
+    const claims = claimRows.map((claim) => ({
+      lineItemId: claim.lineItemId,
+      participantId: claim.friendId,
+      unitIndex: claim.unitIndex,
+    }))
+
+    return {
+      bill,
+      lineItems,
+      participants,
+      claims,
+      receiptUrl,
+      viewerIsOwner: identity?.subject === bill.ownerId,
+    }
+  },
+})
+
+export const prepareShareSession = mutation({
+  args: { shareId: v.string() },
+  handler: async (ctx, args) => {
+    const bill = await getBillByShareId(ctx.db, args.shareId)
+    if (!bill) {
+      return null
+    }
+
+    const identity = await ctx.auth.getUserIdentity()
+    const ownerParticipantId = await ensureOwnerParticipant(ctx, bill, identity)
+
+    return {
+      currentParticipantId:
+        identity?.subject === bill.ownerId ? ownerParticipantId : null,
+    }
   },
 })
 
@@ -38,42 +92,47 @@ export const setClaimers = mutation({
     billId: v.id("bills"),
     lineItemId: v.id("lineItems"),
     unitIndex: v.number(),
-    friendIds: v.array(v.id("friends")),
+    participantIds: v.array(v.id("friends")),
   },
   handler: async (ctx, args) => {
     const validFriends = await ctx.db
       .query("friends")
       .withIndex("by_bill", (q) => q.eq("billId", args.billId))
       .collect()
-    const validFriendIds = new Set(validFriends.map((friend) => friend._id))
-    for (const friendId of args.friendIds) {
-      if (!validFriendIds.has(friendId)) {
-        throw new Error("Invalid friendId for this bill")
+    const participantIdsForBill = new Set(
+      validFriends.map((participant) => participant._id)
+    )
+    for (const participantId of args.participantIds) {
+      if (!participantIdsForBill.has(participantId)) {
+        throw new Error("Participant not found")
       }
     }
 
-    const existing = await ctx.db
+    const existingClaims = await ctx.db
       .query("claims")
       .withIndex("by_bill", (q) => q.eq("billId", args.billId))
       .collect()
 
-    const relevant = existing.filter(
+    const relevantClaims = existingClaims.filter(
       (claim) =>
-        claim.lineItemId === args.lineItemId && claim.unitIndex === args.unitIndex
+        claim.lineItemId === args.lineItemId &&
+        claim.unitIndex === args.unitIndex
     )
 
-    for (const claim of relevant) {
-      if (!args.friendIds.includes(claim.friendId)) {
+    for (const claim of relevantClaims) {
+      if (!args.participantIds.includes(claim.friendId)) {
         await ctx.db.delete(claim._id)
       }
     }
 
-    const existingFriendIds = new Set(relevant.map((claim) => claim.friendId))
-    for (const friendId of args.friendIds) {
-      if (!existingFriendIds.has(friendId)) {
+    const existingParticipantIds = new Set(
+      relevantClaims.map((claim) => claim.friendId)
+    )
+    for (const participantId of args.participantIds) {
+      if (!existingParticipantIds.has(participantId)) {
         await ctx.db.insert("claims", {
           billId: args.billId,
-          friendId,
+          friendId: participantId,
           lineItemId: args.lineItemId,
           unitIndex: args.unitIndex,
         })
@@ -81,3 +140,60 @@ export const setClaimers = mutation({
     }
   },
 })
+
+async function getBillByShareId(db: DatabaseReader, shareId: string) {
+  return await db
+    .query("bills")
+    .withIndex("by_shareId", (q) => q.eq("shareId", shareId))
+    .unique()
+}
+
+async function ensureOwnerParticipant(
+  ctx: MutationCtx,
+  bill: Doc<"bills">,
+  identity: UserIdentity | null
+): Promise<Id<"friends">> {
+  const participants = await ctx.db
+    .query("friends")
+    .withIndex("by_bill", (q) => q.eq("billId", bill._id))
+    .collect()
+
+  const existingOwner = participants.find(
+    (participant) => participant.userId === bill.ownerId
+  )
+  const ownerName = getOwnerParticipantName(identity)
+
+  if (existingOwner) {
+    if (existingOwner.name !== ownerName) {
+      await ctx.db.patch(existingOwner._id, { name: ownerName })
+    }
+
+    return existingOwner._id
+  }
+
+  return await ctx.db.insert("friends", {
+    billId: bill._id,
+    name: ownerName,
+    userId: bill.ownerId,
+  })
+}
+
+function getOwnerParticipantName(identity: UserIdentity | null) {
+  if (!identity) {
+    return "Owner"
+  }
+
+  const fullName = [identity.givenName, identity.familyName]
+    .filter(Boolean)
+    .join(" ")
+    .trim()
+
+  return (
+    identity.name?.trim() ||
+    fullName ||
+    identity.preferredUsername?.trim() ||
+    identity.nickname?.trim() ||
+    identity.email?.split("@")[0]?.trim() ||
+    "Owner"
+  )
+}
