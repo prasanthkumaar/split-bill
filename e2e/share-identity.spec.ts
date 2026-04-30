@@ -69,7 +69,11 @@ test("guest selects an existing participant", async ({ page, browser }) => {
   const { context, page: guestPage } = await openGuestPage(browser, shareUrl)
 
   await guestPage.getByRole("button", { name: "Bob" }).click()
-  await expect(guestPage.getByText("Reviewing as")).toBeVisible()
+  await expect(guestPage.getByText("Summary")).toBeVisible()
+  await expect(guestPage.getByText("0 of 3 reviewed")).toBeVisible()
+  await expect(guestPage.getByTestId("current-participant-trigger")).toHaveText(
+    "Bob"
+  )
   await expect(
     guestPage.getByRole("heading", { name: "Identity Guest Test" })
   ).toBeVisible()
@@ -87,8 +91,11 @@ test("signed-in owner auto-enters the share flow", async ({ page }) => {
 
   await page.goto(shareUrl)
 
-  await expect(page.getByText("Reviewing as")).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByRole("button", { name: "Change" })).toBeVisible()
+  await expect(page.getByText("Summary")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText("0 of 2 reviewed")).toBeVisible()
+  await expect(page.getByTestId("current-participant-trigger")).toHaveText(
+    "Owner"
+  )
   await expect(page.getByText("Who are you?")).toHaveCount(0)
   await expect(page.getByText("Tag everyone to what they had")).toBeVisible()
 })
@@ -110,7 +117,11 @@ test("signed-out owner is redirected to sign in and returns", async ({
   await expect(
     guestPage.getByRole("heading", { name: "Identity Redirect Test" })
   ).toBeVisible({ timeout: 15_000 })
-  await expect(guestPage.getByText("Reviewing as")).toBeVisible()
+  await expect(guestPage.getByText("Summary")).toBeVisible()
+  await expect(guestPage.getByText("0 of 2 reviewed")).toBeVisible()
+  await expect(guestPage.getByTestId("current-participant-trigger")).toHaveText(
+    "Owner"
+  )
   await expect(guestPage.getByText("Who are you?")).toHaveCount(0)
 
   await context.close()

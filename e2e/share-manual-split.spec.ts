@@ -121,7 +121,11 @@ test("Share page manual split flow", async ({ page }) => {
 
   await expect(page.getByText("$70.00").first()).toBeVisible({ timeout: 5_000 })
   await expect(
-    page.locator("div").filter({ hasText: /^Bob\$/ })
+    page
+      .getByRole("toolbar")
+      .first()
+      .locator("[data-slot='combobox-chip']")
+      .filter({ hasText: "Bob" })
   ).toHaveCount(0)
 })
 

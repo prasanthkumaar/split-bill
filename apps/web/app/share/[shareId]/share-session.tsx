@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react"
 import { useAuth, useClerk } from "@clerk/nextjs"
 import { useQuery, useMutation } from "convex/react"
+import { ChevronDown } from "lucide-react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
+import { Button } from "@workspace/ui/components/button"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
-import { ShareHeader } from "./_components/share-header"
 import { IdentityDialog } from "./_components/identity-dialog"
 import { ShareReceiptCard } from "./_components/share-receipt-card"
+import { ReviewStatusCard } from "./_components/review-status-card"
 import { SplitList } from "./_components/split-list"
 import { ItemSplitDialog } from "./_components/item-split-dialog"
 
@@ -28,6 +30,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const clerk = useClerk()
   const data = useQuery(api.sharing.getShareSession, { shareId })
   const prepareShareSession = useMutation(api.sharing.prepareShareSession)
+  const setDone = useMutation(api.sharing.setDone)
   const setClaimers = useMutation(api.sharing.setClaimers)
 
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -38,6 +41,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const [preparedShareId, setPreparedShareId] = useState<string | null>(null)
   const [prepareError, setPrepareError] = useState<string | null>(null)
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false)
+  const [isTogglingDone, setIsTogglingDone] = useState(false)
+  const [doneError, setDoneError] = useState<string | null>(null)
   const [currentParticipantId, setCurrentParticipantId] =
     useState<Id<"friends"> | null>(null)
 
@@ -292,30 +297,52 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     setIdentityDialogOpen(false)
   }
 
+  const handleToggleDone = () => {
+    if (!currentParticipant || isTogglingDone) {
+      return
+    }
+
+    void (async () => {
+      setDoneError(null)
+      setIsTogglingDone(true)
+
+      try {
+        await setDone({
+          billId: bill._id,
+          participantId: currentParticipant.id,
+          done: currentParticipant.doneAt === null,
+        })
+      } catch (error) {
+        console.error("Failed to update review state:", error)
+        setDoneError("Unable to update review status. Try again.")
+      } finally {
+        setIsTogglingDone(false)
+      }
+    })()
+  }
+
   return (
     <div className="mx-auto max-w-6xl p-5 md:grid md:grid-cols-[2fr_3fr] md:gap-4">
-      <div className="space-y-4 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
-        <h1 className="text-center text-xl font-semibold md:text-left">
-          {bill.name}
-        </h1>
-        <ShareReceiptCard
-          receiptUrl={receiptUrl}
-          splits={splits}
-          showBreakdown={showBreakdown}
-          onToggleBreakdown={() => setShowBreakdown((current) => !current)}
-          total={total}
-          unclaimed={unclaimed}
-        />
+      <div className="space-y-3 md:sticky md:top-5 md:max-h-[calc(100vh-2.5rem)] md:self-start md:overflow-y-auto">
+        <div className="md:pr-4">
+          <h1 className="min-w-0 text-xl font-semibold">{bill.name}</h1>
+        </div>
+        <ShareReceiptCard receiptUrl={receiptUrl} />
+        {currentParticipant ? (
+          <ReviewStatusCard
+            participants={participants}
+            splits={splits}
+            currentParticipantId={currentParticipant.id}
+            showBreakdown={showBreakdown}
+            onToggleBreakdown={() => setShowBreakdown((current) => !current)}
+            total={total}
+            unclaimed={unclaimed}
+          />
+        ) : null}
       </div>
 
       <div className="space-y-4">
-        {currentParticipant ? (
-          <ShareHeader
-            currentParticipantName={currentParticipant.name}
-            currentParticipantRole={currentParticipant.role}
-            onChangeParticipant={() => setIdentityDialogOpen(true)}
-          />
-        ) : null}
+        {doneError ? <p className="text-sm text-red-500">{doneError}</p> : null}
 
         {currentParticipant ? (
           <SplitList
@@ -323,6 +350,36 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             claimsByItem={claimsByItem}
             participants={participantOptions}
             participantLabelById={participantLabelById}
+            headerActions={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  data-testid="current-participant-trigger"
+                  variant="outline"
+                  size="default"
+                  className="shrink-0 gap-2"
+                  onClick={() => setIdentityDialogOpen(true)}
+                >
+                  {currentParticipant.name}
+                  <ChevronDown className="size-4" />
+                </Button>
+                <Button
+                  data-testid="done-toggle"
+                  type="button"
+                  aria-pressed={currentParticipant.doneAt !== null}
+                  size="default"
+                  className="shrink-0"
+                  variant={
+                    currentParticipant.doneAt === null && !isTogglingDone
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={handleToggleDone}
+                  disabled={isTogglingDone}
+                >
+                  {currentParticipant.doneAt === null ? "Approve" : "Reviewed"}
+                </Button>
+              </div>
+            }
             isDesktop={isDesktop}
             onClaimIdsChange={handleClaimChange}
             onOpenItemSplit={openDrawer}

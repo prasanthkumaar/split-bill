@@ -45,6 +45,13 @@ export const getShareSession = query({
         doneAt: participant.doneAt ?? null,
       }))
       .sort((left, right) => {
+        const leftIsDone = left.doneAt !== null
+        const rightIsDone = right.doneAt !== null
+
+        if (leftIsDone !== rightIsDone) {
+          return leftIsDone ? -1 : 1
+        }
+
         if (left.role !== right.role) {
           return left.role === "owner" ? -1 : 1
         }
@@ -66,6 +73,35 @@ export const getShareSession = query({
       receiptUrl,
       viewerIsOwner: identity?.subject === bill.ownerId,
     }
+  },
+})
+
+export const setDone = mutation({
+  args: {
+    billId: v.id("bills"),
+    participantId: v.id("friends"),
+    done: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const participant = await ctx.db.get(args.participantId)
+    if (!participant || participant.billId !== args.billId) {
+      throw new Error("Participant not found")
+    }
+
+    if (participant.userId) {
+      const identity = await ctx.auth.getUserIdentity()
+      if (identity?.subject !== participant.userId) {
+        throw new Error("Forbidden")
+      }
+    }
+
+    if (args.done) {
+      await ctx.db.patch(args.participantId, { doneAt: Date.now() })
+      return
+    }
+
+    const { _creationTime, _id, doneAt, ...participantFields } = participant
+    await ctx.db.replace(args.participantId, participantFields)
   },
 })
 

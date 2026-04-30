@@ -314,6 +314,9 @@ test.describe.serial("Bill splitting flows", () => {
     const burgerCombobox = page.getByPlaceholder("Add people...").first();
     await burgerCombobox.fill("Charlie");
     await page.getByRole("option", { name: "Charlie" }).click();
+    await expect(
+      page.getByRole("toolbar").first().getByText("Charlie")
+    ).toBeVisible({ timeout: 5_000 });
 
     // Go back to bill edit page (one goBack from share page)
     await page.goBack();
@@ -353,6 +356,9 @@ test.describe.serial("Bill splitting flows", () => {
     const burgerCombobox2 = page.getByPlaceholder("Add people...").first();
     await burgerCombobox2.fill("Charlie");
     await page.getByRole("option", { name: "Charlie" }).click();
+    await expect(
+      page.getByRole("toolbar").first().getByText("Charlie")
+    ).toBeVisible({ timeout: 5_000 });
 
     // Go back to bill edit (one goBack from share page)
     await page.goBack();
