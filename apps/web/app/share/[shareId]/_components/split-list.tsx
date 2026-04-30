@@ -74,27 +74,11 @@ export function SplitList({
 
                 {isDesktop ? (
                   <Combobox
-                    items={participants.map((participant) => participant.label)}
+                    items={participants.map((participant) => participant.id)}
                     multiple
-                    value={claimerIds.map(
-                      (participantId) =>
-                        participantLabelById.get(participantId) ?? ""
-                    )}
-                    onValueChange={(labels: string[]) =>
-                      onClaimIdsChange(
-                        labels
-                          .map((label) =>
-                            participants.find(
-                              (participant) => participant.label === label
-                            )?.id
-                          )
-                          .filter(
-                            (participantId): participantId is Id<"friends"> =>
-                              Boolean(participantId)
-                          ),
-                        item._id,
-                        item.unitIndex
-                      )
+                    value={claimerIds}
+                    onValueChange={(participantIds: Id<"friends">[]) =>
+                      onClaimIdsChange(participantIds, item._id, item.unitIndex)
                     }
                   >
                     <ComboboxChips className="mt-2 min-h-9 text-xs">
@@ -113,9 +97,9 @@ export function SplitList({
                     <ComboboxContent>
                       <ComboboxEmpty>No one found.</ComboboxEmpty>
                       <ComboboxList>
-                        {(label) => (
-                          <ComboboxItem key={label} value={label}>
-                            {label}
+                        {(participantId) => (
+                          <ComboboxItem key={participantId} value={participantId}>
+                            {participantLabelById.get(participantId) ?? ""}
                           </ComboboxItem>
                         )}
                       </ComboboxList>

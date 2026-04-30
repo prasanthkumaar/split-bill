@@ -124,3 +124,51 @@ test("Share page manual split flow", async ({ page }) => {
     page.locator("div").filter({ hasText: /^Bob\$/ })
   ).toHaveCount(0)
 })
+
+test("Share page keeps duplicate participant claims separate on desktop", async ({
+  page,
+}) => {
+  await login(page)
+  await createBill(page, "Duplicate Names Split Test")
+
+  await addItem(page, "Laksa", 1, 12)
+  await addFriend(page, "Alex")
+  await addFriend(page, "Alex")
+
+  await page.getByRole("button", { name: "Share with friends" }).click()
+  await expect(page.getByText("shared")).toBeVisible({ timeout: 5_000 })
+
+  const shareUrl = await page.locator("input[readonly]").inputValue()
+  await page.goto(shareUrl)
+
+  const toolbar = page.getByRole("toolbar").first()
+  const comboboxInput = toolbar.locator("input")
+  await comboboxInput.fill("Alex")
+  await page.getByRole("option", { name: "Alex" }).click()
+  await comboboxInput.fill("Alex")
+  await page.getByRole("option", { name: "Alex (2)" }).click()
+
+  await expect(
+    toolbar.locator("[data-slot='combobox-chip']").filter({ hasText: "Alex" })
+  ).toHaveCount(1)
+  await expect(
+    toolbar
+      .locator("[data-slot='combobox-chip']")
+      .filter({ hasText: "Alex (2)" })
+  ).toHaveCount(1)
+
+  await toolbar
+    .locator("[data-slot='combobox-chip']")
+    .filter({ hasText: "Alex (2)" })
+    .getByRole("button")
+    .click()
+
+  await expect(
+    toolbar.locator("[data-slot='combobox-chip']").filter({ hasText: "Alex" })
+  ).toHaveCount(1)
+  await expect(
+    toolbar
+      .locator("[data-slot='combobox-chip']")
+      .filter({ hasText: "Alex (2)" })
+  ).toHaveCount(0)
+})
