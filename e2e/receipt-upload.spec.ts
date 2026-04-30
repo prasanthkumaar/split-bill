@@ -6,16 +6,31 @@ const TEST_OTP = "424242"
 
 async function signInAndCreateBill(page: Page, billName: string) {
   await page.goto("/")
-  await page.waitForURL(/sign-in/, { timeout: 10_000 })
-  await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
-  await page.getByRole("button", { name: "Continue", exact: true }).click()
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .waitFor({ timeout: 10_000 })
-  await page.waitForTimeout(500)
-  await page
-    .getByRole("textbox", { name: "Enter verification code" })
-    .pressSequentially(TEST_OTP)
+  const landingState = await Promise.race([
+    page
+      .waitForURL(/sign-in/, { timeout: 10_000 })
+      .then(() => "sign-in" as const),
+    page
+      .getByRole("heading", { name: "Split Bill" })
+      .waitFor({ timeout: 10_000 })
+      .then(() => "home" as const),
+  ])
+
+  if (landingState === "sign-in") {
+    await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
+    await page.getByRole("button", { name: "Continue", exact: true }).click()
+    const otpInput = page.getByRole("textbox", {
+      name: "Enter verification code",
+    })
+    await otpInput.waitFor({ timeout: 10_000 })
+    await expect(otpInput).toBeEditable()
+    await page.waitForTimeout(1500)
+    await otpInput.pressSequentially(TEST_OTP)
+    await page.waitForURL((url) => !url.pathname.includes("sign-in"), {
+      timeout: 15_000,
+    })
+  }
+
   await expect(page.getByRole("heading", { name: "Split Bill" })).toBeVisible({
     timeout: 15_000,
   })
