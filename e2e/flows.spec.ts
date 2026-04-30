@@ -232,6 +232,18 @@ test.describe.serial("Bill splitting flows", () => {
     // 14. Verify split: Alice has Steak ($40)
     // Alice subtotal $40, proportion = 40/60 = 2/3, extras = 10 * 2/3 = $6.67, total = $46.67
     await expect(page.getByText("$46.67").first()).toBeVisible({ timeout: 5_000 });
+    const unaccountedRow = page
+      .locator("div")
+      .filter({
+        has: page.locator("span", { hasText: /^Unaccounted$/ }),
+      })
+      .first();
+    await expect(
+      unaccountedRow.getByText("Unaccounted", { exact: true })
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(unaccountedRow.getByText("$23.33", { exact: true })).toBeVisible({
+      timeout: 5_000,
+    });
 
     // 15. Tag Alice on Salad too (Steak placeholder gone, so Salad is now first)
     const saladCombobox = page.getByPlaceholder("Add people...").first();
@@ -302,6 +314,9 @@ test.describe.serial("Bill splitting flows", () => {
     const burgerCombobox = page.getByPlaceholder("Add people...").first();
     await burgerCombobox.fill("Charlie");
     await page.getByRole("option", { name: "Charlie" }).click();
+    await expect(
+      page.getByRole("toolbar").first().getByText("Charlie")
+    ).toBeVisible({ timeout: 5_000 });
 
     // Go back to bill edit page (one goBack from share page)
     await page.goBack();
@@ -341,6 +356,9 @@ test.describe.serial("Bill splitting flows", () => {
     const burgerCombobox2 = page.getByPlaceholder("Add people...").first();
     await burgerCombobox2.fill("Charlie");
     await page.getByRole("option", { name: "Charlie" }).click();
+    await expect(
+      page.getByRole("toolbar").first().getByText("Charlie")
+    ).toBeVisible({ timeout: 5_000 });
 
     // Go back to bill edit (one goBack from share page)
     await page.goBack();

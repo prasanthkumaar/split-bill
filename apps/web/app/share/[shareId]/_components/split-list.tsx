@@ -1,0 +1,155 @@
+import type { ReactNode } from "react"
+import type { Doc, Id } from "@convex/_generated/dataModel"
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+} from "@workspace/ui/components/combobox"
+
+type SplitListProps = {
+  expandedItems: (Doc<"lineItems"> & {
+    unitIndex: number
+    displayPrice: number
+  })[]
+  claimsByItem: Map<string, Id<"friends">[]>
+  participants: {
+    id: Id<"friends">
+    label: string
+    name: string
+    role: "owner" | "guest"
+  }[]
+  participantLabelById: Map<Id<"friends">, string>
+  headerActions?: ReactNode
+  isDesktop: boolean
+  onClaimIdsChange: (
+    newIds: Id<"friends">[],
+    lineItemId: Id<"lineItems">,
+    unitIndex: number
+  ) => void
+  onOpenItemSplit: (
+    lineItemId: Id<"lineItems">,
+    unitIndex: number,
+    name: string,
+    price: number,
+    currentClaimerIds: Id<"friends">[]
+  ) => void
+}
+
+export function SplitList({
+  expandedItems,
+  claimsByItem,
+  participants,
+  participantLabelById,
+  headerActions,
+  isDesktop,
+  onClaimIdsChange,
+  onOpenItemSplit,
+}: SplitListProps) {
+  return (
+    <Card>
+      <CardHeader className="space-y-1">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="text-lg font-bold">Split bill</CardTitle>
+          {headerActions}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Tag everyone to what they had
+        </p>
+      </CardHeader>
+      <CardContent className="mt-1 space-y-3">
+        {expandedItems.map((item) => {
+          const claimKey = `${item._id}:${item.unitIndex}`
+          const claimerIds = claimsByItem.get(claimKey) ?? []
+
+          return (
+            <div key={`${item._id}-${item.unitIndex}`}>
+              <div className="space-y-1 py-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">{item.name}</span>
+                  <span className="text-sm font-medium">
+                    ${item.displayPrice.toFixed(2)}
+                  </span>
+                </div>
+
+                {isDesktop ? (
+                  <Combobox
+                    items={participants.map((participant) => participant.id)}
+                    multiple
+                    itemToStringLabel={(participantId) =>
+                      participantLabelById.get(participantId) ?? ""
+                    }
+                    value={claimerIds}
+                    onValueChange={(participantIds: Id<"friends">[]) =>
+                      onClaimIdsChange(participantIds, item._id, item.unitIndex)
+                    }
+                  >
+                    <ComboboxChips className="mt-2 min-h-9 text-xs">
+                      <ComboboxValue>
+                        {claimerIds.map((participantId) => {
+                          const label = participantLabelById.get(participantId) ?? ""
+                          return (
+                            <ComboboxChip key={participantId}>{label}</ComboboxChip>
+                          )
+                        })}
+                      </ComboboxValue>
+                      <ComboboxChipsInput
+                        placeholder={claimerIds.length > 0 ? "" : "Add people..."}
+                      />
+                    </ComboboxChips>
+                    <ComboboxContent>
+                      <ComboboxEmpty>No one found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(participantId) => (
+                          <ComboboxItem key={participantId} value={participantId}>
+                            {participantLabelById.get(participantId) ?? ""}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-2 flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-sm transition-colors dark:bg-input/30"
+                    onClick={() =>
+                      onOpenItemSplit(
+                        item._id,
+                        item.unitIndex,
+                        item.name,
+                        item.displayPrice,
+                        claimerIds
+                      )
+                    }
+                  >
+                    {claimerIds.length > 0 ? (
+                      claimerIds.map((participantId) => {
+                        const label = participantLabelById.get(participantId) ?? ""
+                        return (
+                          <span
+                            key={participantId}
+                            className="flex h-6 items-center rounded-sm bg-muted px-2 text-sm font-medium dark:bg-indigo-400/20"
+                          >
+                            {label}
+                          </span>
+                        )
+                      })
+                    ) : (
+                      <span className="text-muted-foreground">Add people...</span>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
+}
