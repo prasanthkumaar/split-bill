@@ -244,13 +244,17 @@ const TEST_OTP = "424242"
 
 async function login(page: Page) {
   await page.goto("/")
-  const needsSignIn = await page
-    .getByRole("textbox", { name: "Email address" })
-    .waitFor({ timeout: 10_000 })
-    .then(() => true)
-    .catch(() => false)
+  const landingState = await Promise.race([
+    page
+      .waitForURL(/sign-in/, { timeout: 10_000 })
+      .then(() => "sign-in" as const),
+    page
+      .getByRole("heading", { name: "Split Bill" })
+      .waitFor({ timeout: 10_000 })
+      .then(() => "home" as const),
+  ])
 
-  if (needsSignIn) {
+  if (landingState === "sign-in") {
     await finishSignIn(page)
     await Promise.race([
       page
@@ -276,6 +280,7 @@ async function finishSignIn(page: Page) {
   const otpInput = page.getByRole("textbox", { name: "Enter verification code" })
   await otpInput.waitFor({ timeout: 10_000 })
   await expect(otpInput).toBeEditable()
+  await page.waitForTimeout(1500)
   await otpInput.pressSequentially(TEST_OTP)
 }
 
