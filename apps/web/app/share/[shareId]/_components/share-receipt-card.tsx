@@ -55,7 +55,7 @@ export function ShareReceiptCard({
             </DialogTrigger>
             <DialogContent
               showCloseButton={false}
-              className="w-[95vw]! max-w-[95vw]! gap-0! overflow-hidden rounded-2xl! p-0! sm:w-fit!"
+              className="!w-[95vw] !max-w-[95vw] !gap-0 !overflow-hidden !rounded-2xl !p-0 sm:!w-fit"
             >
               <DialogTitle className="sr-only">Receipt</DialogTitle>
               <DialogClose asChild>
