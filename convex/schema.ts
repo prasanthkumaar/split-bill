@@ -30,6 +30,8 @@ export default defineSchema({
   friends: defineTable({
     billId: v.id("bills"),
     name: v.string(),
+    userId: v.optional(v.string()),
+    doneAt: v.optional(v.number()),
   }).index("by_bill", ["billId"]),
 
   claims: defineTable({
