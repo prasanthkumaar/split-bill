@@ -11,7 +11,7 @@ import {
   type PreparedBulkEditInput,
 } from "./schema"
 
-const BULK_EDIT_TIMEOUT_MS = 15_000
+const BULK_EDIT_TIMEOUT_MS = 60_000
 
 export async function generateBulkEdit(input: BulkEditInput) {
   const preparedInput = prepareBulkEditInput(input)
@@ -51,7 +51,10 @@ export async function generateBulkEdit(input: BulkEditInput) {
         throw error
       }
 
-      if (error.name === "AbortError") {
+      if (
+        error.name === "AbortError" ||
+        error.name === "TimeoutError"
+      ) {
         throw new Error("Bulk edit generation timed out")
       }
     }
