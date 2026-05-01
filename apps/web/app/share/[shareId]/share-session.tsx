@@ -402,7 +402,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
                   onClick={handleToggleDone}
                   disabled={isTogglingDone}
                 >
-                  {currentParticipant.doneAt === null ? "Approve" : "Reviewed"}
+                  {currentParticipant.doneAt === null ? "I've checked my items" : "Checked"}
                 </Button>
               </div>
             }
