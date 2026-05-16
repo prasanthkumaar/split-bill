@@ -113,40 +113,6 @@ test("Receipt upload normalizes unsupported mobile image types", async ({
   expect(receivedMimeType).toBe("image/jpeg")
 })
 
-test("Receipt upload keeps existing receipt state when parsing fails", async ({
-  page,
-}) => {
-  test.setTimeout(120_000)
-
-  await signInAndCreateBill(page, "OCR Failure Test")
-
-  await page.route("**/api/parse-receipt", async (route) => {
-    expect(route.request().headers().authorization).toMatch(/^Bearer\s+\S+/)
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({ error: "parse failed" }),
-    })
-  })
-
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles("e2e/fixtures/test-receipt.png")
-
-  await expect(page.getByText("Processing receipt...")).toBeVisible({
-    timeout: 5_000,
-  })
-  await expect(page.getByText("Processing receipt...")).not.toBeVisible({
-    timeout: 20_000,
-  })
-
-  await expect(
-    page.getByText("Unable to parse receipt. Try re-uploading a clearer photo.")
-  ).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByText("Upload receipt photo")).toBeVisible()
-  await expect(page.getByText("Re-upload receipt")).not.toBeVisible()
-})
-
 test("Receipt OCR upload", async ({ page }) => {
   test.setTimeout(120_000)
 

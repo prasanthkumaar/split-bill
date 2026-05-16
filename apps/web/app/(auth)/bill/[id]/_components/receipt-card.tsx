@@ -1,6 +1,5 @@
 import { useRef } from "react"
 import Image from "next/image"
-import { Alert, AlertDescription } from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Loader2, Upload } from "lucide-react"
@@ -9,14 +8,12 @@ const MAX_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024
 type ReceiptCardProps = {
   receiptUrl?: string | null
   uploading: boolean
-  uploadError?: string
   onUploadReceipt: (file: File) => void
 }
 
 export function ReceiptCard({
   receiptUrl,
   uploading,
-  uploadError,
   onUploadReceipt,
 }: ReceiptCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -77,11 +74,6 @@ export function ReceiptCard({
             </>
           )}
         </Button>
-        {uploadError ? (
-          <Alert variant="destructive" className="mt-2">
-            <AlertDescription>{uploadError}</AlertDescription>
-          </Alert>
-        ) : null}
       </CardContent>
     </Card>
   )
