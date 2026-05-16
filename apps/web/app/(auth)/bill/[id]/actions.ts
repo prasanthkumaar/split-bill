@@ -84,21 +84,28 @@ Rules:
     throw new ReceiptParseError("Model returned invalid JSON")
   }
 
-  const parsedResult = parseReceiptResultSchema.parse(
-    modelReceiptSchema.parse(parsedJson)
-  )
-  if (parsedResult.items.length === 0) {
+  const modelResult = modelReceiptSchema.safeParse(parsedJson)
+  if (!modelResult.success) {
     throw new ReceiptParseError("Failed to parse receipt data from image")
   }
 
-  return parsedResult
+  const parsedResult = parseReceiptResultSchema.safeParse(modelResult.data)
+  if (!parsedResult.success) {
+    throw new ReceiptParseError("Failed to parse receipt data from image")
+  }
+
+  if (parsedResult.data.items.length === 0) {
+    throw new ReceiptParseError("Failed to parse receipt data from image")
+  }
+
+  return parsedResult.data
 }
 
 const modelReceiptItemSchema = z
   .object({
     name: z.string().trim().min(1),
     quantity: z.coerce.number().positive().catch(1),
-    unitPrice: z.union([z.number(), z.string()]),
+    unitPrice: z.union([z.number(), z.string()]).nullable().optional(),
   })
   .transform(({ name, quantity, unitPrice }) => {
     const amount = parseReceiptAmount(unitPrice)
@@ -124,7 +131,7 @@ const modelReceiptSchema = z
     }
   })
 
-function parseReceiptAmount(value: number | string | undefined) {
+function parseReceiptAmount(value: number | string | null | undefined) {
   if (typeof value === "number") {
     return Number.isFinite(value) && value >= 0
       ? Math.round(value * 100) / 100
@@ -135,7 +142,20 @@ function parseReceiptAmount(value: number | string | undefined) {
     return null
   }
 
-  const amount = Number(value.trim().replace(/[$,]/g, ""))
+  let normalized = value.trim().replace(/[^\d.,-]/g, "")
+  if (!normalized || normalized === "-") {
+    return null
+  }
+
+  if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(normalized)) {
+    normalized = normalized.replace(/,/g, "")
+  } else if (!normalized.includes(".") && /^-?\d+,\d+$/.test(normalized)) {
+    normalized = normalized.replace(",", ".")
+  } else {
+    normalized = normalized.replace(/,/g, "")
+  }
+
+  const amount = Number(normalized)
   if (!Number.isFinite(amount) || amount < 0) {
     return null
   }
