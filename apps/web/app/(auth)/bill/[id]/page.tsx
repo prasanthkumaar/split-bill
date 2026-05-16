@@ -39,7 +39,11 @@ export default function BillPage() {
   const removeItem = useMutation(api.lineItems.remove)
   const addFriend = useMutation(api.friends.add)
   const removeFriend = useMutation(api.friends.remove)
-  const { mutate: uploadReceipt, isPending: uploading } = useUploadReceipt(billId)
+  const {
+    mutate: uploadReceipt,
+    isPending: uploading,
+    error: uploadError,
+  } = useUploadReceipt(billId)
 
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -172,6 +176,11 @@ export default function BillPage() {
       <ReceiptCard
         receiptUrl={bill.receiptUrl}
         uploading={uploading}
+        uploadError={
+          uploadError
+            ? "Unable to parse receipt. Try re-uploading a clearer photo."
+            : undefined
+        }
         onUploadReceipt={(file) => uploadReceipt(file)}
       />
 

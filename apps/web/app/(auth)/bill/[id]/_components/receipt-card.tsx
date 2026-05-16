@@ -8,12 +8,14 @@ const MAX_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024
 type ReceiptCardProps = {
   receiptUrl?: string | null
   uploading: boolean
+  uploadError?: string
   onUploadReceipt: (file: File) => void
 }
 
 export function ReceiptCard({
   receiptUrl,
   uploading,
+  uploadError,
   onUploadReceipt,
 }: ReceiptCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -74,6 +76,9 @@ export function ReceiptCard({
             </>
           )}
         </Button>
+        {uploadError ? (
+          <p className="mt-2 text-sm text-red-500">{uploadError}</p>
+        ) : null}
       </CardContent>
     </Card>
   )

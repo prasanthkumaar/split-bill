@@ -1,11 +1,9 @@
 import { useMutation as useConvexMutation } from "convex/react"
+import { useAuth } from "@clerk/nextjs"
 import { useMutation } from "@tanstack/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import {
-  parseReceiptResultSchema,
-  type ParseReceiptResult,
-} from "../schema"
+import { parseReceiptResultSchema, type ParseReceiptResult } from "../schema"
 
 const SUPPORTED_RECEIPT_MIME_TYPES = new Set([
   "image/jpeg",
@@ -18,6 +16,7 @@ const MAX_RECEIPT_DIMENSION = 2048
 const JPEG_QUALITY = 0.85
 
 export function useUploadReceipt(billId: Id<"bills">) {
+  const { getToken } = useAuth()
   const generateUploadUrl = useConvexMutation(api.bills.generateUploadUrl)
   const updateBill = useConvexMutation(api.bills.update)
   const replaceAllItems = useConvexMutation(api.lineItems.replaceAll)
@@ -25,6 +24,17 @@ export function useUploadReceipt(billId: Id<"bills">) {
   return useMutation({
     mutationFn: async (file: File) => {
       const normalizedFile = await normalizeReceiptFile(file)
+      const imageBase64 = await toBase64(normalizedFile)
+      const authToken = await getToken()
+      if (!authToken) {
+        throw new Error("Failed to authenticate receipt parsing")
+      }
+      const parsed = await requestReceiptParse(
+        imageBase64,
+        normalizedFile.type,
+        authToken
+      )
+
       const uploadUrl = await generateUploadUrl()
       const res = await fetch(uploadUrl, {
         method: "POST",
@@ -32,21 +42,14 @@ export function useUploadReceipt(billId: Id<"bills">) {
         body: normalizedFile,
       })
       const { storageId } = await res.json()
-      await updateBill({ id: billId, imageId: storageId })
 
-      const imageBase64 = await toBase64(normalizedFile)
-      const parsed = await requestReceiptParse(imageBase64, normalizedFile.type)
-
-      if (parsed.items.length) {
-        await replaceAllItems({ billId, items: parsed.items })
-      }
-      if (parsed.tax || parsed.serviceCharge) {
-        await updateBill({
-          id: billId,
-          tax: parsed.tax,
-          serviceCharge: parsed.serviceCharge,
-        })
-      }
+      await replaceAllItems({ billId, items: parsed.items })
+      await updateBill({
+        id: billId,
+        imageId: storageId,
+        tax: parsed.tax,
+        serviceCharge: parsed.serviceCharge,
+      })
     },
   })
 }
@@ -155,11 +158,15 @@ function toJpegFilename(fileName: string) {
 
 async function requestReceiptParse(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  authToken: string
 ): Promise<ParseReceiptResult> {
   const res = await fetch("/api/parse-receipt", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ imageBase64, mimeType }),
   })
 
