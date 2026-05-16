@@ -15,8 +15,7 @@ const ALLOWED_RECEIPT_MIME_TYPES = new Set([
   "image/webp",
   "image/gif",
 ])
-const MAX_RECEIPT_BYTES = 10 * 1024 * 1024
-const MAX_RECEIPT_BASE64_CHARS = Math.ceil((MAX_RECEIPT_BYTES * 4) / 3)
+const MAX_RECEIPT_BASE64_CHARS = 10 * 1024 * 1024
 
 export class ReceiptParseError extends Error {
   constructor(message: string) {
@@ -67,7 +66,6 @@ export async function parseReceipt(input: ParseReceiptInput) {
 Rules:
 - quantity defaults to 1 if not shown
 - unitPrice is the price per unit (divide total by quantity if needed)
-- use the key "unitPrice", not "price" or "amount"
 - omit bundle/component rows with no price, such as rows whose price is "---"
 - tax is the total tax amount (0 if not shown)
 - serviceCharge is the service charge amount (0 if not shown)
@@ -108,24 +106,10 @@ const modelReceiptItemSchema = z
     name: z.string().trim().min(1),
     quantity: z.coerce.number().positive().catch(1),
     unitPrice: z.union([z.number(), z.string()]).nullable().optional(),
-    price: z.union([z.number(), z.string()]).nullable().optional(),
-    amount: z.union([z.number(), z.string()]).nullable().optional(),
-    total: z.union([z.number(), z.string()]).nullable().optional(),
-    totalPrice: z.union([z.number(), z.string()]).nullable().optional(),
-    lineTotal: z.union([z.number(), z.string()]).nullable().optional(),
   })
-  .transform((item) => {
-    const amount =
-      parseReceiptAmount(item.unitPrice) ??
-      parseReceiptAmount(item.price) ??
-      parseReceiptAmount(item.amount) ??
-      getUnitPriceFromLineTotal(item.totalPrice, item.quantity) ??
-      getUnitPriceFromLineTotal(item.lineTotal, item.quantity) ??
-      getUnitPriceFromLineTotal(item.total, item.quantity)
-
-    return amount === null
-      ? null
-      : { name: item.name, quantity: item.quantity, unitPrice: amount }
+  .transform(({ name, quantity, unitPrice }) => {
+    const amount = parseReceiptAmount(unitPrice)
+    return amount === null ? null : { name, quantity, unitPrice: amount }
   })
 
 const modelReceiptSchema = z
@@ -177,16 +161,4 @@ function parseReceiptAmount(value: number | string | null | undefined) {
   }
 
   return Math.round(amount * 100) / 100
-}
-
-function getUnitPriceFromLineTotal(
-  value: number | string | null | undefined,
-  quantity: number
-) {
-  const amount = parseReceiptAmount(value)
-  if (amount === null) {
-    return null
-  }
-
-  return Math.round((amount / quantity) * 100) / 100
 }

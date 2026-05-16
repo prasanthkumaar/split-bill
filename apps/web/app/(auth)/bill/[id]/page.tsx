@@ -39,11 +39,7 @@ export default function BillPage() {
   const removeItem = useMutation(api.lineItems.remove)
   const addFriend = useMutation(api.friends.add)
   const removeFriend = useMutation(api.friends.remove)
-  const {
-    mutate: uploadReceipt,
-    isPending: uploading,
-    error: uploadError,
-  } = useUploadReceipt(billId)
+  const { mutate: uploadReceipt, isPending: uploading } = useUploadReceipt(billId)
 
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -165,15 +161,6 @@ export default function BillPage() {
       ? `${deleteConfirm.name} has claimed ${deleteConfirm.claimCount} item${deleteConfirm.claimCount === 1 ? "" : "s"}. Their claims will be removed and splits will change.`
       : `${deleteConfirm.claimCount} person${deleteConfirm.claimCount === 1 ? " has" : "s have"} claimed this item. Their claims will be removed and splits will change.`
 
-  const uploadErrorMessage =
-    uploadError instanceof Error ? uploadError.message : undefined
-  const receiptUploadError =
-    uploadErrorMessage === "Failed to parse receipt"
-      ? "Unable to parse receipt. Try re-uploading a clearer photo."
-      : uploadErrorMessage
-        ? "Failed to upload receipt. Please try again."
-        : undefined
-
   return (
     <div className="mx-auto max-w-2xl p-6">
       <BillHeader
@@ -185,7 +172,6 @@ export default function BillPage() {
       <ReceiptCard
         receiptUrl={bill.receiptUrl}
         uploading={uploading}
-        uploadError={receiptUploadError}
         onUploadReceipt={(file) => uploadReceipt(file)}
       />
 
