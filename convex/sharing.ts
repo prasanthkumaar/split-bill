@@ -7,6 +7,7 @@ import {
   type DatabaseReader,
   type MutationCtx,
 } from "./_generated/server"
+import { getOwnerParticipantName } from "./utils/ownerName"
 
 export const getShareSession = query({
   args: { shareId: v.string() },
@@ -275,26 +276,6 @@ async function ensureOwnerParticipant(
     name: ownerName,
     userId: bill.ownerId,
   })
-}
-
-function getOwnerParticipantName(identity: UserIdentity | null) {
-  if (!identity) {
-    return "Owner"
-  }
-
-  const fullName = [identity.givenName, identity.familyName]
-    .filter(Boolean)
-    .join(" ")
-    .trim()
-
-  return (
-    identity.name?.trim() ||
-    fullName ||
-    identity.preferredUsername?.trim() ||
-    identity.nickname?.trim() ||
-    identity.email?.split("@")[0]?.trim() ||
-    "Owner"
-  )
 }
 
 type BulkEditAssignment = {
