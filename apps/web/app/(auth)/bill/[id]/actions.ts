@@ -1,10 +1,12 @@
 import { generateText } from "ai"
 import { createAnthropic } from "@ai-sdk/anthropic"
+import { z } from "zod"
 import { env } from "@/env"
 import {
   parseReceiptInputSchema,
   parseReceiptResultSchema,
   type ParseReceiptInput,
+  type ParseReceiptResult,
 } from "./schema"
 
 const ALLOWED_RECEIPT_MIME_TYPES = new Set([
@@ -51,7 +53,7 @@ export async function parseReceipt(input: ParseReceiptInput) {
           },
           {
             type: "text",
-            text: `Extract all line items from this receipt image. Return ONLY a JSON object with this exact structure, no other text:
+            text: `Extract all charged line items from this receipt image. Return ONLY a JSON object with this exact structure, no other text:
 
 {
   "items": [
@@ -64,6 +66,8 @@ export async function parseReceipt(input: ParseReceiptInput) {
 Rules:
 - quantity defaults to 1 if not shown
 - unitPrice is the price per unit (divide total by quantity if needed)
+- use the key "unitPrice", not "price" or "amount"
+- omit bundle/component rows with no price, such as rows whose price is "---"
 - tax is the total tax amount (0 if not shown)
 - serviceCharge is the service charge amount (0 if not shown)
 - Use exact values from the receipt
@@ -81,10 +85,122 @@ Rules:
     throw new ReceiptParseError("Model returned invalid JSON")
   }
 
-  const parsedResult = parseReceiptResultSchema.safeParse(parsedJson)
+  const modelResult = modelReceiptSchema.safeParse(parsedJson)
+  if (!modelResult.success) {
+    throw new ReceiptParseError("Failed to parse receipt data from image")
+  }
+
+  const parsedResult = parseReceiptResultSchema.safeParse(modelResult.data)
   if (!parsedResult.success) {
     throw new ReceiptParseError("Failed to parse receipt data from image")
   }
 
+  if (parsedResult.data.items.length === 0) {
+    throw new ReceiptParseError("Failed to parse receipt data from image")
+  }
+
   return parsedResult.data
+}
+
+const modelReceiptItemSchema = z
+  .object({
+    name: z.string().trim().min(1),
+    quantity: z.coerce.number().positive().catch(1),
+    unitPrice: z.union([z.number(), z.string()]).nullable().optional(),
+    price: z.union([z.number(), z.string()]).nullable().optional(),
+    amount: z.union([z.number(), z.string()]).nullable().optional(),
+    total: z.union([z.number(), z.string()]).nullable().optional(),
+    totalPrice: z.union([z.number(), z.string()]).nullable().optional(),
+    lineTotal: z.union([z.number(), z.string()]).nullable().optional(),
+  })
+  .transform((item) => {
+    const unitPrice =
+      parseReceiptAmount(item.unitPrice) ??
+      parseReceiptAmount(item.price) ??
+      parseReceiptAmount(item.amount) ??
+      getUnitPriceFromLineTotal(item.totalPrice, item.quantity) ??
+      getUnitPriceFromLineTotal(item.lineTotal, item.quantity) ??
+      getUnitPriceFromLineTotal(item.total, item.quantity)
+
+    return unitPrice === null
+      ? null
+      : { name: item.name, quantity: item.quantity, unitPrice }
+  })
+
+const modelReceiptSchema = z
+  .object({
+    items: z.array(modelReceiptItemSchema),
+    tax: z.union([z.number(), z.string()]).nullable().optional(),
+    serviceCharge: z.union([z.number(), z.string()]).nullable().optional(),
+  })
+  .transform(({ items, tax, serviceCharge }): ParseReceiptResult => {
+    const chargedItems: ParseReceiptResult["items"] = []
+    for (const item of items) {
+      if (item) chargedItems.push(item)
+    }
+
+    return {
+      items: chargedItems,
+      tax: parseReceiptAmount(tax) ?? 0,
+      serviceCharge: parseReceiptAmount(serviceCharge) ?? 0,
+    }
+  })
+
+function parseReceiptAmount(value: number | string | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0
+      ? Math.round(value * 100) / 100
+      : null
+  }
+
+  if (!value) {
+    return null
+  }
+
+  let normalized = value.trim().replace(/[^\d.,-]/g, "")
+  if (!normalized || normalized === "-") {
+    return null
+  }
+
+  if (normalized.includes(".") && normalized.includes(",")) {
+    const decimalSeparator =
+      normalized.lastIndexOf(".") > normalized.lastIndexOf(",") ? "." : ","
+    const thousandsSeparator = decimalSeparator === "." ? "," : "."
+
+    normalized = normalized.replace(
+      new RegExp(`\\${thousandsSeparator}`, "g"),
+      ""
+    )
+
+    if (decimalSeparator === ",") {
+      normalized = normalized.replace(",", ".")
+    }
+  } else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(normalized)) {
+    normalized = normalized.replace(/,/g, "")
+  } else if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(normalized)) {
+    normalized = normalized.replace(/\./g, "").replace(",", ".")
+  } else if (!normalized.includes(".") && /^-?\d+,\d+$/.test(normalized)) {
+    normalized = normalized.replace(",", ".")
+  } else {
+    normalized = normalized.replace(/,/g, "")
+  }
+
+  const amount = Number(normalized)
+  if (!Number.isFinite(amount) || amount < 0) {
+    return null
+  }
+
+  return Math.round(amount * 100) / 100
+}
+
+function getUnitPriceFromLineTotal(
+  value: number | string | null | undefined,
+  quantity: number
+) {
+  const amount = parseReceiptAmount(value)
+  if (amount === null) {
+    return null
+  }
+
+  return Math.round((amount / quantity) * 100) / 100
 }

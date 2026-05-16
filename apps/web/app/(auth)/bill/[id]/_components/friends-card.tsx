@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel"
+import type { Doc } from "@convex/_generated/dataModel"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -11,7 +12,8 @@ import { UserPlus, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 
 type FriendsCardProps = {
-  friends: Doc<"friends">[] | undefined
+  participants: Doc<"friends">[] | undefined
+  billOwnerId: string
   claimsByFriend: Map<string, number>
   onAddFriend: (name: string) => Promise<void> | void
   onDeleteFriend: (friend: Doc<"friends">, claimCount: number) => void
@@ -22,7 +24,8 @@ type FriendsFormValues = {
 }
 
 export function FriendsCard({
-  friends,
+  participants,
+  billOwnerId,
   claimsByFriend,
   onAddFriend,
   onDeleteFriend,
@@ -38,25 +41,42 @@ export function FriendsCard({
   return (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle className="text-base">Friends</CardTitle>
+        <CardTitle className="text-base">Participants</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {friends?.map((friend) => (
-          <div key={friend._id} className="flex items-center justify-between">
-            <span className="text-sm">{friend.name}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              type="button"
-              aria-label={`Remove ${friend.name}`}
-              onClick={() =>
-                onDeleteFriend(friend, claimsByFriend.get(friend._id) ?? 0)
-              }
+        {participants?.map((participant) => {
+          const isOwner =
+            (participant.role ??
+              getLegacyParticipantRole(participant, billOwnerId)) === "owner"
+
+          return (
+            <div
+              key={participant._id}
+              className="flex items-center justify-between gap-3"
             >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ))}
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm">{participant.name}</span>
+                {isOwner ? <Badge variant="secondary">Owner</Badge> : null}
+              </div>
+              {isOwner ? null : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  aria-label={`Remove ${participant.name}`}
+                  onClick={() =>
+                    onDeleteFriend(
+                      participant,
+                      claimsByFriend.get(participant._id) ?? 0
+                    )
+                  }
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          )
+        })}
         <form
           onSubmit={handleSubmit(async ({ name }) => {
             const trimmedName = name.trim()
@@ -79,4 +99,11 @@ export function FriendsCard({
       </CardContent>
     </Card>
   )
+}
+
+function getLegacyParticipantRole(
+  participant: Doc<"friends">,
+  ownerId: string
+) {
+  return participant.userId === ownerId ? "owner" : "guest"
 }

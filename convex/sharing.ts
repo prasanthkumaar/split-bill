@@ -38,10 +38,7 @@ export const getShareSession = query({
       .map((participant) => ({
         id: participant._id,
         name: participant.name,
-        role:
-          participant.userId === bill.ownerId
-            ? ("owner" as const)
-            : ("guest" as const),
+        role: getParticipantRole(participant, bill.ownerId),
         doneAt: participant.doneAt ?? null,
       }))
       .sort((left, right) => {
@@ -263,8 +260,18 @@ async function ensureOwnerParticipant(
   const ownerName = getOwnerParticipantName(identity)
 
   if (existingOwner) {
+    const updates: Partial<Pick<Doc<"friends">, "name" | "role">> = {}
+
     if (existingOwner.name !== ownerName) {
-      await ctx.db.patch(existingOwner._id, { name: ownerName })
+      updates.name = ownerName
+    }
+
+    if (existingOwner.role !== "owner") {
+      updates.role = "owner"
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(existingOwner._id, updates)
     }
 
     return existingOwner._id
@@ -273,8 +280,15 @@ async function ensureOwnerParticipant(
   return await ctx.db.insert("friends", {
     billId: bill._id,
     name: ownerName,
+    role: "owner",
     userId: bill.ownerId,
   })
+}
+
+function getParticipantRole(participant: Doc<"friends">, ownerId: string) {
+  return (
+    participant.role ?? (participant.userId === ownerId ? "owner" : "guest")
+  )
 }
 
 function getOwnerParticipantName(identity: UserIdentity | null) {
