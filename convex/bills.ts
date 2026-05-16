@@ -1,9 +1,13 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
+import type { MutationCtx } from "./_generated/server"
 import { nanoid } from "./utils/nanoid"
 import { assertBillOwner } from "./utils/access"
 import { getOwnerParticipantName } from "./utils/ownerName"
 import { BILL_STATUSES } from "./schema"
+
+const MAX_RECEIPT_IMAGE_BYTES = 10 * 1024 * 1024
 
 export const list = query({
   args: {},
@@ -57,11 +61,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     await assertBillOwner(ctx, args.id)
     if (args.imageId) {
-      const meta = await ctx.db.system.get(args.imageId)
-      if (meta && meta.size > 10 * 1024 * 1024) {
-        await ctx.storage.delete(args.imageId)
-        throw new Error("File too large. Maximum size is 10MB.")
-      }
+      await validateReceiptImageSize(ctx, args.imageId)
     }
     const { id, ...updates } = args
     const filtered = Object.fromEntries(
@@ -70,6 +70,66 @@ export const update = mutation({
     await ctx.db.patch(id, filtered)
   },
 })
+
+export const applyParsedReceipt = mutation({
+  args: {
+    billId: v.id("bills"),
+    imageId: v.id("_storage"),
+    tax: v.number(),
+    serviceCharge: v.number(),
+    items: v.array(
+      v.object({
+        name: v.string(),
+        quantity: v.number(),
+        unitPrice: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    await assertBillOwner(ctx, args.billId)
+    await validateReceiptImageSize(ctx, args.imageId)
+
+    const existingItems = await ctx.db
+      .query("lineItems")
+      .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+      .collect()
+
+    const claims = await ctx.db
+      .query("claims")
+      .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+      .collect()
+    for (const claim of claims) {
+      await ctx.db.delete(claim._id)
+    }
+    for (const item of existingItems) {
+      await ctx.db.delete(item._id)
+    }
+
+    for (const item of args.items) {
+      await ctx.db.insert("lineItems", {
+        billId: args.billId,
+        ...item,
+      })
+    }
+
+    await ctx.db.patch(args.billId, {
+      imageId: args.imageId,
+      tax: args.tax,
+      serviceCharge: args.serviceCharge,
+    })
+  },
+})
+
+async function validateReceiptImageSize(
+  ctx: MutationCtx,
+  imageId: Id<"_storage">
+) {
+  const meta = await ctx.db.system.get(imageId)
+  if (meta && meta.size > MAX_RECEIPT_IMAGE_BYTES) {
+    await ctx.storage.delete(imageId)
+    throw new Error("File too large. Maximum size is 10MB.")
+  }
+}
 
 export const remove = mutation({
   args: { id: v.id("bills") },

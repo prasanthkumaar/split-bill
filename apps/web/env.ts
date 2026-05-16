@@ -3,7 +3,6 @@ import { z } from "zod"
 
 export const env = createEnv({
   server: {
-    CONVEX_DEPLOYMENT: z.string().min(1),
     CLERK_SECRET_KEY: z.string().min(1),
     CLERK_FRONTEND_API_URL: z.string().min(1),
     ANTHROPIC_API_KEY: z.string().min(1),
@@ -16,7 +15,6 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: z.string().min(1),
   },
   runtimeEnv: {
-    CONVEX_DEPLOYMENT: process.env.CONVEX_DEPLOYMENT,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     CLERK_FRONTEND_API_URL: process.env.CLERK_FRONTEND_API_URL,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,

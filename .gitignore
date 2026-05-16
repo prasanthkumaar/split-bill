@@ -28,12 +28,13 @@ out/
 build
 dist
 
+# Convex
+**/convex/_generated/
+!convex/_generated/
+!convex/_generated/**
 
 # Debug
 npm-debug.log*
-
-# Convex
-**/convex/_generated/
 
 # Misc
 .DS_Store
