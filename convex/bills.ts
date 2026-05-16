@@ -22,6 +22,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     imageId: v.optional(v.id("_storage")),
+    ownerName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -38,7 +39,7 @@ export const create = mutation({
     })
     await ctx.db.insert("friends", {
       billId,
-      name: getOwnerParticipantName(identity),
+      name: getOwnerParticipantName(identity, args.ownerName),
       role: "owner",
       userId: identity.subject,
     })
@@ -106,13 +107,15 @@ export const generateUploadUrl = mutation({
   },
 })
 
-function getOwnerParticipantName(identity: UserIdentity) {
+function getOwnerParticipantName(identity: UserIdentity, ownerName?: string) {
+  const clientOwnerName = ownerName?.trim()
   const fullName = [identity.givenName, identity.familyName]
     .filter(Boolean)
     .join(" ")
     .trim()
 
   return (
+    clientOwnerName ||
     identity.name?.trim() ||
     fullName ||
     identity.preferredUsername?.trim() ||

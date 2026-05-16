@@ -2,9 +2,10 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { Button } from "@workspace/ui/components/button";
 import { ReceiptThumbnail } from "@/components/receipt-thumbnail";
+import { getClerkDisplayName } from "@/lib/clerk-display-name";
 import {
   Card,
   CardContent,
@@ -29,6 +30,7 @@ import {
 import type { Id } from "@convex/_generated/dataModel";
 
 export default function HomePage() {
+  const { user } = useUser();
   const bills = useQuery(api.bills.list);
   const createBill = useMutation(api.bills.create);
   const removeBill = useMutation(api.bills.remove);
@@ -42,7 +44,10 @@ export default function HomePage() {
 
   const handleCreate = async () => {
     if (!newBillName.trim()) return;
-    const id = await createBill({ name: newBillName.trim() });
+    const id = await createBill({
+      name: newBillName.trim(),
+      ownerName: getClerkDisplayName(user),
+    });
     setNewBillName("");
     router.push(`/bill/${id}`);
   };

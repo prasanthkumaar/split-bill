@@ -1,6 +1,12 @@
 import type { ReactNode } from "react"
 import type { Doc, Id } from "@convex/_generated/dataModel"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import { Badge } from "@workspace/ui/components/badge"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import {
   Combobox,
   ComboboxChip,
@@ -52,6 +58,10 @@ export function SplitList({
   onClaimIdsChange,
   onOpenItemSplit,
 }: SplitListProps) {
+  const participantById = new Map(
+    participants.map((participant) => [participant.id, participant])
+  )
+
   return (
     <Card>
       <CardHeader className="space-y-1">
@@ -93,24 +103,44 @@ export function SplitList({
                     <ComboboxChips className="mt-2 min-h-9 text-xs">
                       <ComboboxValue>
                         {claimerIds.map((participantId) => {
-                          const label = participantLabelById.get(participantId) ?? ""
+                          const label =
+                            participantLabelById.get(participantId) ?? ""
                           return (
-                            <ComboboxChip key={participantId}>{label}</ComboboxChip>
+                            <ComboboxChip key={participantId}>
+                              {label}
+                            </ComboboxChip>
                           )
                         })}
                       </ComboboxValue>
                       <ComboboxChipsInput
-                        placeholder={claimerIds.length > 0 ? "" : "Add people..."}
+                        placeholder={
+                          claimerIds.length > 0 ? "" : "Add people..."
+                        }
                       />
                     </ComboboxChips>
                     <ComboboxContent>
                       <ComboboxEmpty>No one found.</ComboboxEmpty>
                       <ComboboxList>
-                        {(participantId) => (
-                          <ComboboxItem key={participantId} value={participantId}>
-                            {participantLabelById.get(participantId) ?? ""}
-                          </ComboboxItem>
-                        )}
+                        {(participantId) => {
+                          const participant = participantById.get(participantId)
+
+                          return (
+                            <ComboboxItem
+                              key={participantId}
+                              value={participantId}
+                            >
+                              <span className="flex w-full items-center justify-between gap-2">
+                                <span>
+                                  {participantLabelById.get(participantId) ??
+                                    ""}
+                                </span>
+                                {participant?.role === "owner" ? (
+                                  <Badge variant="secondary">Owner</Badge>
+                                ) : null}
+                              </span>
+                            </ComboboxItem>
+                          )
+                        }}
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
@@ -130,7 +160,8 @@ export function SplitList({
                   >
                     {claimerIds.length > 0 ? (
                       claimerIds.map((participantId) => {
-                        const label = participantLabelById.get(participantId) ?? ""
+                        const label =
+                          participantLabelById.get(participantId) ?? ""
                         return (
                           <span
                             key={participantId}
@@ -141,7 +172,9 @@ export function SplitList({
                         )
                       })
                     ) : (
-                      <span className="text-muted-foreground">Add people...</span>
+                      <span className="text-muted-foreground">
+                        Add people...
+                      </span>
                     )}
                   </button>
                 )}
