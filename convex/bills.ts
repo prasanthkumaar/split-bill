@@ -39,6 +39,7 @@ export const create = mutation({
     await ctx.db.insert("friends", {
       billId,
       name: getOwnerParticipantName(identity),
+      role: "owner",
       userId: identity.subject,
     })
     return billId

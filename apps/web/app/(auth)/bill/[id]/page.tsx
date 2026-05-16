@@ -39,7 +39,8 @@ export default function BillPage() {
   const removeItem = useMutation(api.lineItems.remove)
   const addFriend = useMutation(api.friends.add)
   const removeFriend = useMutation(api.friends.remove)
-  const { mutate: uploadReceipt, isPending: uploading } = useUploadReceipt(billId)
+  const { mutate: uploadReceipt, isPending: uploading } =
+    useUploadReceipt(billId)
 
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -79,6 +80,10 @@ export default function BillPage() {
     lineItems?.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) ??
     0
   const total = subtotal + bill.tax + bill.serviceCharge
+  const guestFriends =
+    friends?.filter(
+      (friend) => getParticipantRole(friend, bill.ownerId) === "guest"
+    ) ?? []
 
   const shareUrl =
     typeof window !== "undefined"
@@ -195,7 +200,8 @@ export default function BillPage() {
       />
 
       <FriendsCard
-        friends={friends}
+        participants={friends}
+        billOwnerId={bill.ownerId}
         claimsByFriend={claimsByFriend}
         onAddFriend={handleAddFriend}
         onDeleteFriend={handleDeleteFriend}
@@ -205,7 +211,7 @@ export default function BillPage() {
         status={bill.status}
         shareUrl={shareUrl}
         copied={copied}
-        hasFriends={Boolean(friends?.length)}
+        hasFriends={guestFriends.length > 0}
         hasLineItems={Boolean(lineItems?.length)}
         onShare={handleShare}
         onCopy={handleCopy}
@@ -242,5 +248,11 @@ export default function BillPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+function getParticipantRole(participant: Doc<"friends">, ownerId: string) {
+  return (
+    participant.role ?? (participant.userId === ownerId ? "owner" : "guest")
   )
 }
