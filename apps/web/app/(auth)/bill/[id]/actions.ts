@@ -15,7 +15,8 @@ const ALLOWED_RECEIPT_MIME_TYPES = new Set([
   "image/webp",
   "image/gif",
 ])
-const MAX_RECEIPT_BASE64_CHARS = 10 * 1024 * 1024
+const MAX_RECEIPT_BYTES = 10 * 1024 * 1024
+const MAX_RECEIPT_BASE64_CHARS = Math.ceil((MAX_RECEIPT_BYTES * 4) / 3)
 
 export class ReceiptParseError extends Error {
   constructor(message: string) {

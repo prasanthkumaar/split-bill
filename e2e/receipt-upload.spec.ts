@@ -121,6 +121,7 @@ test("Receipt upload keeps existing receipt state when parsing fails", async ({
   await signInAndCreateBill(page, "OCR Failure Test")
 
   await page.route("**/api/parse-receipt", async (route) => {
+    expect(route.request().headers().authorization).toMatch(/^Bearer\s+\S+/)
     await route.fulfill({
       status: 500,
       contentType: "application/json",

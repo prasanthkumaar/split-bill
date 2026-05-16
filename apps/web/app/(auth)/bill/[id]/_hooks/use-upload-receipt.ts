@@ -18,8 +18,7 @@ const JPEG_QUALITY = 0.85
 export function useUploadReceipt(billId: Id<"bills">) {
   const { getToken } = useAuth()
   const generateUploadUrl = useConvexMutation(api.bills.generateUploadUrl)
-  const updateBill = useConvexMutation(api.bills.update)
-  const replaceAllItems = useConvexMutation(api.lineItems.replaceAll)
+  const applyParsedReceipt = useConvexMutation(api.bills.applyParsedReceipt)
 
   return useMutation({
     mutationFn: async (file: File) => {
@@ -43,12 +42,12 @@ export function useUploadReceipt(billId: Id<"bills">) {
       })
       const { storageId } = await res.json()
 
-      await replaceAllItems({ billId, items: parsed.items })
-      await updateBill({
-        id: billId,
+      await applyParsedReceipt({
+        billId,
         imageId: storageId,
         tax: parsed.tax,
         serviceCharge: parsed.serviceCharge,
+        items: parsed.items,
       })
     },
   })

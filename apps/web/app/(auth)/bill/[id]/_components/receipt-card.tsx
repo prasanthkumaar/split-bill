@@ -1,5 +1,6 @@
 import { useRef } from "react"
 import Image from "next/image"
+import { Alert, AlertDescription } from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Loader2, Upload } from "lucide-react"
@@ -77,7 +78,9 @@ export function ReceiptCard({
           )}
         </Button>
         {uploadError ? (
-          <p className="mt-2 text-sm text-red-500">{uploadError}</p>
+          <Alert variant="destructive" className="mt-2">
+            <AlertDescription>{uploadError}</AlertDescription>
+          </Alert>
         ) : null}
       </CardContent>
     </Card>
