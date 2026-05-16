@@ -171,7 +171,7 @@ export default function BillPage() {
     uploadErrorMessage === "Failed to parse receipt"
       ? "Unable to parse receipt. Try re-uploading a clearer photo."
       : uploadErrorMessage
-        ? "Failed to upload receipt. Please try again."
+        ? "Failed to upload receipt. Please try again or check your network."
         : undefined
 
   return (

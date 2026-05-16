@@ -14,6 +14,7 @@ const SUPPORTED_RECEIPT_MIME_TYPES = new Set([
 const NORMALIZED_RECEIPT_MIME_TYPE = "image/jpeg"
 const MAX_RECEIPT_DIMENSION = 2048
 const JPEG_QUALITY = 0.85
+const PARSE_RECEIPT_ERROR_STATUSES = new Set([400, 422])
 
 export function useUploadReceipt(billId: Id<"bills">) {
   const { getToken } = useAuth()
@@ -170,9 +171,28 @@ async function requestReceiptParse(
   })
 
   if (!res.ok) {
-    throw new Error("Failed to parse receipt")
+    const errorMessage = await getReceiptParseErrorMessage(res)
+    console.error("Receipt parse request failed", {
+      status: res.status,
+      error: errorMessage,
+    })
+
+    if (PARSE_RECEIPT_ERROR_STATUSES.has(res.status)) {
+      throw new Error("Failed to parse receipt")
+    }
+
+    throw new Error("Failed to upload receipt")
   }
 
   const data = await res.json()
   return parseReceiptResultSchema.parse(data)
+}
+
+async function getReceiptParseErrorMessage(res: Response) {
+  try {
+    const data = (await res.clone().json()) as { error?: unknown }
+    return typeof data.error === "string" ? data.error : res.statusText
+  } catch {
+    return res.statusText
+  }
 }

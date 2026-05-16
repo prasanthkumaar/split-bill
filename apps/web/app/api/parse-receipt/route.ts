@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
 import { z } from "zod"
-import {
-  parseReceipt,
-  ReceiptParseError,
-} from "@/app/(auth)/bill/[id]/actions"
+import { parseReceipt, ReceiptParseError } from "@/app/(auth)/bill/[id]/actions"
 import { parseReceiptInputSchema } from "@/app/(auth)/bill/[id]/schema"
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+
     const body = parseReceiptInputSchema.safeParse(await req.json())
     if (!body.success) {
       return NextResponse.json(
@@ -21,10 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(parsed)
     } catch (error) {
       if (error instanceof ReceiptParseError || error instanceof z.ZodError) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 422 }
-        )
+        return NextResponse.json({ error: error.message }, { status: 422 })
       }
 
       throw error
