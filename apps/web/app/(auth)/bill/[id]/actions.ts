@@ -162,8 +162,23 @@ function parseReceiptAmount(value: number | string | null | undefined) {
     return null
   }
 
-  if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(normalized)) {
+  if (normalized.includes(".") && normalized.includes(",")) {
+    const decimalSeparator =
+      normalized.lastIndexOf(".") > normalized.lastIndexOf(",") ? "." : ","
+    const thousandsSeparator = decimalSeparator === "." ? "," : "."
+
+    normalized = normalized.replace(
+      new RegExp(`\\${thousandsSeparator}`, "g"),
+      ""
+    )
+
+    if (decimalSeparator === ",") {
+      normalized = normalized.replace(",", ".")
+    }
+  } else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(normalized)) {
     normalized = normalized.replace(/,/g, "")
+  } else if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(normalized)) {
+    normalized = normalized.replace(/\./g, "").replace(",", ".")
   } else if (!normalized.includes(".") && /^-?\d+,\d+$/.test(normalized)) {
     normalized = normalized.replace(",", ".")
   } else {
