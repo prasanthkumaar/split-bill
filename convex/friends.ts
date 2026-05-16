@@ -5,14 +5,19 @@ import { assertBillOwner } from "./utils/access"
 export const list = query({
   args: { billId: v.id("bills") },
   handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.billId)
+    if (!bill) return []
+
     const friends = await ctx.db
       .query("friends")
       .withIndex("by_bill", (q) => q.eq("billId", args.billId))
       .collect()
 
     return friends.sort((left, right) => {
-      const leftRole = left.role ?? "guest"
-      const rightRole = right.role ?? "guest"
+      const leftRole =
+        left.role ?? (left.userId === bill.ownerId ? "owner" : "guest")
+      const rightRole =
+        right.role ?? (right.userId === bill.ownerId ? "owner" : "guest")
 
       if (leftRole !== rightRole) {
         return leftRole === "owner" ? -1 : 1
