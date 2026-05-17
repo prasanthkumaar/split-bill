@@ -29,7 +29,14 @@ export function IdentityDialog({
       // onSelectParticipant, because the share page should not be interactive
       // before someone explicitly chooses who they are.
       title="Review your share"
-      description="Select your name and check your items. Please wait to pay until everyone has reviewed."
+      description={
+        <>
+          <span>Select your name and check your items.</span>
+          <span className="block">
+            Please wait to pay until everyone has reviewed.
+          </span>
+        </>
+      }
       contentClassName="sm:max-w-md"
     >
       <div className="space-y-1.5">
