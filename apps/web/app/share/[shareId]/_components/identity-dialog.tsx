@@ -50,11 +50,13 @@ export function IdentityDialog({
               className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition-colors active:bg-accent ${isSelected ? "bg-accent/50" : ""}`}
               onClick={() => onSelectParticipant(participant.id)}
             >
-              <span className="text-base font-medium">{participant.name}</span>
-              <div className="flex items-center gap-3">
+              <span className="flex items-center gap-3">
+                <span className="text-base font-medium">
+                  {participant.name}
+                </span>
                 {participant.role === "owner" ? <Badge>Owner</Badge> : null}
-                <SelectionIcon selected={isSelected} />
-              </div>
+              </span>
+              <SelectionIcon selected={isSelected} />
             </button>
           )
         })}
