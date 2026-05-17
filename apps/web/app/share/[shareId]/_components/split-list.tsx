@@ -129,7 +129,7 @@ export function SplitList({
                               key={participantId}
                               value={participantId}
                             >
-                              <span className="flex w-full items-center justify-between gap-2">
+                              <span className="flex items-center gap-2">
                                 <span>
                                   {participantLabelById.get(participantId) ??
                                     ""}
