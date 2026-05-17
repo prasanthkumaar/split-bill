@@ -1,8 +1,8 @@
 import { v } from "convex/values"
-import type { UserIdentity } from "convex/server"
 import { mutation, query } from "./_generated/server"
 import { nanoid } from "./utils/nanoid"
 import { assertBillOwner } from "./utils/access"
+import { getOwnerParticipantName } from "./utils/ownerName"
 import { BILL_STATUSES } from "./schema"
 
 export const list = query({
@@ -22,6 +22,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     imageId: v.optional(v.id("_storage")),
+    ownerName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -38,7 +39,7 @@ export const create = mutation({
     })
     await ctx.db.insert("friends", {
       billId,
-      name: getOwnerParticipantName(identity),
+      name: getOwnerParticipantName(identity, args.ownerName),
       role: "owner",
       userId: identity.subject,
     })
@@ -105,22 +106,6 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl()
   },
 })
-
-function getOwnerParticipantName(identity: UserIdentity) {
-  const fullName = [identity.givenName, identity.familyName]
-    .filter(Boolean)
-    .join(" ")
-    .trim()
-
-  return (
-    identity.name?.trim() ||
-    fullName ||
-    identity.preferredUsername?.trim() ||
-    identity.nickname?.trim() ||
-    identity.email?.split("@")[0]?.trim() ||
-    "Owner"
-  )
-}
 
 export const getImageUrl = query({
   args: { storageId: v.id("_storage") },

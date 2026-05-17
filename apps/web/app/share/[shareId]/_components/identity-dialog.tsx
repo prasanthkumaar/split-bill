@@ -28,8 +28,15 @@ export function IdentityDialog({
       // Identity stays open until currentParticipantId changes through
       // onSelectParticipant, because the share page should not be interactive
       // before someone explicitly chooses who they are.
-      title="Who are you?"
-      description="Pick your name to start reviewing this bill."
+      title="Review your share"
+      description={
+        <>
+          <span>Select your name and check your items.</span>
+          <span className="block">
+            Please wait to pay until everyone has reviewed.
+          </span>
+        </>
+      }
       contentClassName="sm:max-w-md"
     >
       <div className="space-y-1.5">
@@ -43,11 +50,13 @@ export function IdentityDialog({
               className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition-colors active:bg-accent ${isSelected ? "bg-accent/50" : ""}`}
               onClick={() => onSelectParticipant(participant.id)}
             >
-              <span className="text-base font-medium">{participant.name}</span>
-              <div className="flex items-center gap-3">
+              <span className="flex items-center gap-3">
+                <span className="text-base font-medium">
+                  {participant.name}
+                </span>
                 {participant.role === "owner" ? <Badge>Owner</Badge> : null}
-                <SelectionIcon selected={isSelected} />
-              </div>
+              </span>
+              <SelectionIcon selected={isSelected} />
             </button>
           )
         })}
