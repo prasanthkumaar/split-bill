@@ -28,8 +28,8 @@ export function IdentityDialog({
       // Identity stays open until currentParticipantId changes through
       // onSelectParticipant, because the share page should not be interactive
       // before someone explicitly chooses who they are.
-      title="Who are you?"
-      description="Pick your name to start reviewing this bill."
+      title="Review your share"
+      description="Select your name and check your items. Please wait to pay until everyone has reviewed."
       contentClassName="sm:max-w-md"
     >
       <div className="space-y-1.5">
