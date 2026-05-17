@@ -7,6 +7,7 @@ import {
   type DatabaseReader,
   type MutationCtx,
 } from "./_generated/server"
+import { getOwnerParticipantName } from "./utils/ownerName"
 
 export const getShareSession = query({
   args: { shareId: v.string() },
@@ -296,24 +297,6 @@ async function ensureOwnerParticipant(
 function getParticipantRole(participant: Doc<"friends">, ownerId: string) {
   return (
     participant.role ?? (participant.userId === ownerId ? "owner" : "guest")
-  )
-}
-
-function getOwnerParticipantName(identity: UserIdentity, ownerName?: string) {
-  const clientOwnerName = ownerName?.trim()
-  const fullName = [identity.givenName, identity.familyName]
-    .filter(Boolean)
-    .join(" ")
-    .trim()
-
-  return (
-    clientOwnerName ||
-    identity.name?.trim() ||
-    fullName ||
-    identity.preferredUsername?.trim() ||
-    identity.nickname?.trim() ||
-    identity.email?.split("@")[0]?.trim() ||
-    "Owner"
   )
 }
 

@@ -29,7 +29,7 @@ type DrawerItem = {
 
 export function ShareSession({ shareId }: ShareSessionProps) {
   const { isLoaded, userId } = useAuth()
-  const { user } = useUser()
+  const { isLoaded: isUserLoaded, user } = useUser()
   const clerk = useClerk()
   const data = useQuery(api.sharing.getShareSession, { shareId })
   const prepareShareSession = useMutation(api.sharing.prepareShareSession)
@@ -61,6 +61,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       data === undefined ||
       data === null ||
       !isLoaded ||
+      !isUserLoaded ||
       preparedShareId === shareId
     ) {
       return
@@ -94,7 +95,15 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     return () => {
       cancelled = true
     }
-  }, [data, isLoaded, prepareShareSession, preparedShareId, shareId, user])
+  }, [
+    data,
+    isLoaded,
+    isUserLoaded,
+    prepareShareSession,
+    preparedShareId,
+    shareId,
+    user,
+  ])
 
   if (data === null) {
     return (
@@ -104,7 +113,12 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     )
   }
 
-  if (data === undefined || !isLoaded || preparedShareId !== shareId) {
+  if (
+    data === undefined ||
+    !isLoaded ||
+    !isUserLoaded ||
+    preparedShareId !== shareId
+  ) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>

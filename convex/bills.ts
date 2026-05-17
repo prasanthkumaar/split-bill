@@ -1,8 +1,8 @@
 import { v } from "convex/values"
-import type { UserIdentity } from "convex/server"
 import { mutation, query } from "./_generated/server"
 import { nanoid } from "./utils/nanoid"
 import { assertBillOwner } from "./utils/access"
+import { getOwnerParticipantName } from "./utils/ownerName"
 import { BILL_STATUSES } from "./schema"
 
 export const list = query({
@@ -106,24 +106,6 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl()
   },
 })
-
-function getOwnerParticipantName(identity: UserIdentity, ownerName?: string) {
-  const clientOwnerName = ownerName?.trim()
-  const fullName = [identity.givenName, identity.familyName]
-    .filter(Boolean)
-    .join(" ")
-    .trim()
-
-  return (
-    clientOwnerName ||
-    identity.name?.trim() ||
-    fullName ||
-    identity.preferredUsername?.trim() ||
-    identity.nickname?.trim() ||
-    identity.email?.split("@")[0]?.trim() ||
-    "Owner"
-  )
-}
 
 export const getImageUrl = query({
   args: { storageId: v.id("_storage") },
