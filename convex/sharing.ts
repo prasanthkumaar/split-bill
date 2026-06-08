@@ -41,6 +41,7 @@ export const getShareSession = query({
         name: participant.name,
         role: getParticipantRole(participant, bill.ownerId),
         doneAt: participant.doneAt ?? null,
+        paidAt: participant.paidAt ?? null,
       }))
       .sort((left, right) => {
         const leftIsDone = left.doneAt !== null
@@ -98,8 +99,97 @@ export const setDone = mutation({
       return
     }
 
+    // Reviewing locks once everyone has reviewed: at that point the pay phase
+    // has begun and review state must stay stable.
+    const participants = await ctx.db
+      .query("friends")
+      .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+      .collect()
+    const everyoneReviewed = participants.every(
+      (entry) => entry.doneAt !== null && entry.doneAt !== undefined
+    )
+    if (everyoneReviewed) {
+      throw new Error("Reviewing is locked once everyone has reviewed")
+    }
+
     const { _creationTime, _id, doneAt, ...participantFields } = participant
     await ctx.db.replace(args.participantId, participantFields)
+  },
+})
+
+export const setPaid = mutation({
+  args: {
+    billId: v.id("bills"),
+    participantId: v.id("friends"),
+    paid: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.billId)
+    if (!bill) {
+      throw new Error("Bill not found")
+    }
+
+    // Payments only exist within the share phase. Reject "editing" so a crafted
+    // call can't skip sharing and drive the bill into the payment state machine.
+    if (bill.status === "editing") {
+      throw new Error("Bill must be shared before payments can be updated")
+    }
+
+    const participant = await ctx.db.get(args.participantId)
+    if (!participant || participant.billId !== args.billId) {
+      throw new Error("Participant not found")
+    }
+
+    // The owner is owed and never pays their own bill.
+    if (participant.userId === bill.ownerId) {
+      throw new Error("The bill owner does not settle their own share")
+    }
+
+    // Honour system for guests, mirroring setDone: an account-bound participant
+    // can only be changed by that account.
+    if (participant.userId) {
+      const identity = await ctx.auth.getUserIdentity()
+      if (identity?.subject !== participant.userId) {
+        throw new Error("Forbidden")
+      }
+    }
+
+    // Paying is only possible once everyone has reviewed.
+    const participants = await ctx.db
+      .query("friends")
+      .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+      .collect()
+    const everyoneReviewed = participants.every(
+      (entry) => entry.doneAt !== null && entry.doneAt !== undefined
+    )
+    if (!everyoneReviewed) {
+      throw new Error("Everyone must review before paying")
+    }
+
+    if (args.paid) {
+      await ctx.db.patch(args.participantId, { paidAt: Date.now() })
+    } else {
+      const { _creationTime, _id, paidAt, ...participantFields } = participant
+      await ctx.db.replace(args.participantId, participantFields)
+    }
+
+    // The bill is settled once every guest (non-owner) has paid.
+    const updated = await ctx.db
+      .query("friends")
+      .withIndex("by_bill", (q) => q.eq("billId", args.billId))
+      .collect()
+    const guests = updated.filter((entry) => entry.userId !== bill.ownerId)
+    const allGuestsPaid =
+      guests.length > 0 &&
+      guests.every(
+        (entry) => entry.paidAt !== null && entry.paidAt !== undefined
+      )
+
+    if (allGuestsPaid && bill.status === "shared") {
+      await ctx.db.patch(args.billId, { status: "settled" })
+    } else if (!allGuestsPaid && bill.status === "settled") {
+      await ctx.db.patch(args.billId, { status: "shared" })
+    }
   },
 })
 
@@ -119,6 +209,12 @@ export const applyBulkEdit = mutation({
     const identity = await ctx.auth.getUserIdentity()
     if (!bill || identity?.subject !== bill.ownerId) {
       throw new Error("Not authorised")
+    }
+
+    // A settled bill's totals are final. Changing the split would silently
+    // invalidate who paid what, so require undoing a payment first.
+    if (bill.status === "settled") {
+      throw new Error("Undo a payment before changing a settled bill's split")
     }
 
     const [lineItems, participants, claims] = await Promise.all([
@@ -197,6 +293,17 @@ export const setClaimers = mutation({
     participantIds: v.array(v.id("friends")),
   },
   handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.billId)
+    if (!bill) {
+      throw new Error("Bill not found")
+    }
+
+    // A settled bill's totals are final. Changing the split would silently
+    // invalidate who paid what, so require undoing a payment first.
+    if (bill.status === "settled") {
+      throw new Error("Undo a payment before changing a settled bill's split")
+    }
+
     const validFriends = await ctx.db
       .query("friends")
       .withIndex("by_bill", (q) => q.eq("billId", args.billId))

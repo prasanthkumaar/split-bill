@@ -34,6 +34,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const data = useQuery(api.sharing.getShareSession, { shareId })
   const prepareShareSession = useMutation(api.sharing.prepareShareSession)
   const setDone = useMutation(api.sharing.setDone)
+  const setPaid = useMutation(api.sharing.setPaid)
   const setClaimers = useMutation(api.sharing.setClaimers)
 
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -45,7 +46,8 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   const [prepareError, setPrepareError] = useState<string | null>(null)
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false)
   const [isTogglingDone, setIsTogglingDone] = useState(false)
-  const [doneError, setDoneError] = useState<string | null>(null)
+  const [isTogglingPaid, setIsTogglingPaid] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [currentParticipantId, setCurrentParticipantId] =
     useState<Id<"friends"> | null>(null)
 
@@ -135,6 +137,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
   }
 
   const { bill, lineItems, participants, claims, receiptUrl } = data
+  const settled = bill.status === "settled"
 
   const subtotal = lineItems.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
@@ -334,7 +337,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     }
 
     void (async () => {
-      setDoneError(null)
+      setActionError(null)
       setIsTogglingDone(true)
 
       try {
@@ -345,9 +348,33 @@ export function ShareSession({ shareId }: ShareSessionProps) {
         })
       } catch (error) {
         console.error("Failed to update review state:", error)
-        setDoneError("Unable to update review status. Try again.")
+        setActionError("Unable to update review status. Try again.")
       } finally {
         setIsTogglingDone(false)
+      }
+    })()
+  }
+
+  const handleTogglePaid = () => {
+    if (!currentParticipant || isTogglingPaid) {
+      return
+    }
+
+    void (async () => {
+      setActionError(null)
+      setIsTogglingPaid(true)
+
+      try {
+        await setPaid({
+          billId: bill._id,
+          participantId: currentParticipant.id,
+          paid: currentParticipant.paidAt === null,
+        })
+      } catch (error) {
+        console.error("Failed to update payment state:", error)
+        setActionError("Unable to update payment status. Try again.")
+      } finally {
+        setIsTogglingPaid(false)
       }
     })()
   }
@@ -368,13 +395,17 @@ export function ShareSession({ shareId }: ShareSessionProps) {
             onToggleBreakdown={() => setShowBreakdown((current) => !current)}
             total={total}
             unclaimed={unclaimed}
+            settled={settled}
+            isTogglingReviewed={isTogglingDone}
+            isTogglingPaid={isTogglingPaid}
+            actionError={actionError}
+            onToggleReviewed={handleToggleDone}
+            onTogglePaid={handleTogglePaid}
           />
         ) : null}
       </div>
 
       <div className="space-y-4">
-        {doneError ? <p className="text-sm text-red-500">{doneError}</p> : null}
-
         {currentParticipant ? (
           <SplitList
             expandedItems={expandedItems}
@@ -403,24 +434,6 @@ export function ShareSession({ shareId }: ShareSessionProps) {
                 >
                   {currentParticipant.name}
                   <ChevronDown className="size-4" />
-                </Button>
-                <Button
-                  data-testid="done-toggle"
-                  type="button"
-                  aria-pressed={currentParticipant.doneAt !== null}
-                  size="lg"
-                  className="shrink-0"
-                  variant={
-                    currentParticipant.doneAt === null && !isTogglingDone
-                      ? "default"
-                      : "outline"
-                  }
-                  onClick={handleToggleDone}
-                  disabled={isTogglingDone}
-                >
-                  {currentParticipant.doneAt === null
-                    ? "I've checked my items"
-                    : "Checked"}
                 </Button>
               </div>
             }

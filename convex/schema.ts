@@ -35,6 +35,7 @@ export default defineSchema({
     ),
     userId: v.optional(v.string()),
     doneAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
   }).index("by_bill", ["billId"]),
 
   claims: defineTable({
