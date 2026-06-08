@@ -1,17 +1,21 @@
 import type { Id } from "@convex/_generated/dataModel"
-import { Eye, EyeOff } from "lucide-react"
+import { CheckCircle2, Circle, Eye, EyeOff } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { ReviewTransferStatus } from "./review-transfer-status"
+import { PayStatusBox } from "./pay-status-box"
+
+type ReviewStatusCardParticipant = {
+  id: Id<"friends">
+  name: string
+  role: "owner" | "guest"
+  doneAt: number | null
+  paidAt: number | null
+}
 
 type ReviewStatusCardProps = {
-  participants: {
-    id: Id<"friends">
-    name: string
-    role: "owner" | "guest"
-    doneAt: number | null
-  }[]
+  participants: ReviewStatusCardParticipant[]
   splits: {
     id: string
     name: string
@@ -24,6 +28,12 @@ type ReviewStatusCardProps = {
   onToggleBreakdown: () => void
   total: number
   unclaimed: number
+  settled: boolean
+  isTogglingReviewed: boolean
+  isTogglingPaid: boolean
+  actionError: string | null
+  onToggleReviewed: () => void
+  onTogglePaid: () => void
 }
 
 export function ReviewStatusCard({
@@ -34,10 +44,18 @@ export function ReviewStatusCard({
   onToggleBreakdown,
   total,
   unclaimed,
+  settled,
+  isTogglingReviewed,
+  isTogglingPaid,
+  actionError,
+  onToggleReviewed,
+  onTogglePaid,
 }: ReviewStatusCardProps) {
   const doneCount = participants.filter(
     (participant) => participant.doneAt !== null
   ).length
+  const allReviewed =
+    participants.length > 0 && doneCount === participants.length
   const currentParticipant = participants.find(
     (participant) => participant.id === currentParticipantId
   )
@@ -54,12 +72,48 @@ export function ReviewStatusCard({
     ),
   ]
 
+  const yourShare = splitByParticipantId.get(currentParticipant.id)?.total ?? 0
+
   return (
     <section className="space-y-6 md:pr-4">
-      <ReviewTransferStatus
-        doneCount={doneCount}
-        participantCount={participants.length}
-      />
+      {allReviewed ? (
+        <PayStatusBox
+          role={currentParticipant.role}
+          yourShare={yourShare}
+          paid={currentParticipant.paidAt !== null}
+          settled={settled}
+          isToggling={isTogglingPaid}
+          onTogglePaid={onTogglePaid}
+        />
+      ) : (
+        <ReviewTransferStatus
+          doneCount={doneCount}
+          participantCount={participants.length}
+          action={
+            <Button
+              data-testid="done-toggle"
+              type="button"
+              aria-pressed={currentParticipant.doneAt !== null}
+              className="w-full"
+              variant={
+                currentParticipant.doneAt === null && !isTogglingReviewed
+                  ? "default"
+                  : "outline"
+              }
+              onClick={onToggleReviewed}
+              disabled={isTogglingReviewed}
+            >
+              {currentParticipant.doneAt === null
+                ? "I've reviewed"
+                : "Reviewed"}
+            </Button>
+          }
+        />
+      )}
+
+      {actionError ? (
+        <p className="text-sm text-red-500">{actionError}</p>
+      ) : null}
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -96,13 +150,12 @@ export function ReviewStatusCard({
               <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-medium">{participant.name}</span>
-                  <Badge
-                    variant={
-                      participant.doneAt !== null ? "secondary" : "outline"
-                    }
-                  >
-                    {participant.doneAt !== null ? "Reviewed" : "Pending"}
-                  </Badge>
+                  <StatusBadge
+                    allReviewed={allReviewed}
+                    role={participant.role}
+                    reviewed={participant.doneAt !== null}
+                    paid={participant.paidAt !== null}
+                  />
                 </div>
                 <span />
                 <span className="text-right font-semibold tabular-nums">
@@ -160,5 +213,46 @@ export function ReviewStatusCard({
         ) : null}
       </div>
     </section>
+  )
+}
+
+type StatusBadgeProps = {
+  allReviewed: boolean
+  role: "owner" | "guest"
+  reviewed: boolean
+  paid: boolean
+}
+
+// In the review phase everyone shows Reviewed/Pending. Once everyone has
+// reviewed, guests show Paid/Unpaid; the owner is owed, so shows no paid badge.
+function StatusBadge({ allReviewed, role, reviewed, paid }: StatusBadgeProps) {
+  if (allReviewed) {
+    if (role === "owner") {
+      return null
+    }
+
+    return paid ? (
+      <Badge className="gap-1 border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="size-3" />
+        Paid
+      </Badge>
+    ) : (
+      <Badge variant="outline" className="gap-1">
+        <Circle className="size-3" />
+        Unpaid
+      </Badge>
+    )
+  }
+
+  return reviewed ? (
+    <Badge variant="secondary" className="gap-1">
+      <CheckCircle2 className="size-3" />
+      Reviewed
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="gap-1">
+      <Circle className="size-3" />
+      Pending
+    </Badge>
   )
 }

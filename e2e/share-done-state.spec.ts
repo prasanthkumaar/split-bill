@@ -30,7 +30,9 @@ async function login(page: Page) {
 async function finishSignIn(page: Page) {
   await page.getByRole("textbox", { name: "Email address" }).fill(TEST_EMAIL)
   await page.getByRole("button", { name: "Continue", exact: true }).click()
-  const otpInput = page.getByRole("textbox", { name: "Enter verification code" })
+  const otpInput = page.getByRole("textbox", {
+    name: "Enter verification code",
+  })
   await otpInput.waitFor({ timeout: 10_000 })
   await expect(otpInput).toBeEditable()
   await otpInput.pressSequentially(TEST_OTP)
@@ -83,7 +85,9 @@ test("guest done state persists across refresh and does not block tagging", asyn
 
   try {
     await guestPage.getByRole("button", { name: "Bob" }).click()
-    await expect(guestPage.getByTestId("done-toggle")).toHaveText("Approve")
+    await expect(guestPage.getByTestId("done-toggle")).toHaveText(
+      "I've reviewed"
+    )
     await expect(
       guestPage.getByText(
         "Please wait until everyone has reviewed, shared items may still affect your total."
@@ -116,7 +120,9 @@ test("guest done state persists across refresh and does not block tagging", asyn
 
     await guestPage.getByTestId("done-toggle").click()
     await expect(guestPage.getByText("0 of 2 reviewed")).toBeVisible()
-    await expect(guestPage.getByTestId("done-toggle")).toHaveText("Approve")
+    await expect(guestPage.getByTestId("done-toggle")).toHaveText(
+      "I've reviewed"
+    )
     await expect(
       guestPage.getByTestId("review-participant").first()
     ).toContainText("Pending")
@@ -137,7 +143,7 @@ test("owner can mark done without affecting owner entry", async ({
   await expect(page.getByTestId("current-participant-trigger")).toHaveText(
     "Owner"
   )
-  await expect(page.getByTestId("done-toggle")).toHaveText("Approve")
+  await expect(page.getByTestId("done-toggle")).toHaveText("I've reviewed")
   await expect(
     page.getByText(
       "Please wait until everyone has reviewed, shared items may still affect your total."
@@ -164,5 +170,52 @@ test("owner can mark done without affecting owner entry", async ({
     await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
   } finally {
     await guestContext.close()
+  }
+})
+
+test("guest pays to settle the bill while the owner cannot pay", async ({
+  page,
+  browser,
+}) => {
+  const shareUrl = await createSharedBill(page, "Pay Settle Test", ["Bob"])
+
+  // Owner reviews first.
+  await page.goto(shareUrl)
+  await expect(page.getByText("Summary")).toBeVisible({ timeout: 10_000 })
+  await page.getByTestId("done-toggle").click()
+  await expect(page.getByText("1 of 2 reviewed")).toBeVisible()
+
+  const { context, page: guestPage } = await openGuestPage(browser, shareUrl)
+
+  try {
+    // Guest reviews, which opens the pay phase for everyone.
+    await guestPage.getByRole("button", { name: "Bob" }).click()
+    await guestPage.getByTestId("done-toggle").click()
+    await expect(guestPage.getByTestId("paid-toggle")).toContainText(
+      "I've paid"
+    )
+
+    // The owner is owed and never sees a pay action.
+    await expect(page.getByText("All members have reviewed")).toBeVisible()
+    await expect(page.getByTestId("paid-toggle")).toHaveCount(0)
+
+    // Guest pays, settling the bill (single guest), reflected for the owner too.
+    await guestPage.getByTestId("paid-toggle").click()
+    await expect(guestPage.getByTestId("paid-toggle")).toContainText("Paid")
+    await expect(guestPage.getByText("All settled")).toBeVisible()
+    await expect(
+      guestPage.getByTestId("review-participant").first()
+    ).toContainText("Paid")
+    await expect(page.getByText("All settled")).toBeVisible()
+
+    // Paying is reversible: undoing reverts the bill out of settled.
+    await guestPage.getByTestId("paid-toggle").click()
+    await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
+    await expect(
+      guestPage.getByTestId("review-participant").first()
+    ).toContainText("Unpaid")
+    await expect(page.getByText("All settled")).toHaveCount(0)
+  } finally {
+    await context.close()
   }
 })

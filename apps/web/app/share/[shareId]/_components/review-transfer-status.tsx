@@ -1,11 +1,15 @@
+import type { ReactNode } from "react"
+
 type ReviewTransferStatusProps = {
   doneCount: number
   participantCount: number
+  action?: ReactNode
 }
 
 export function ReviewTransferStatus({
   doneCount,
   participantCount,
+  action,
 }: ReviewTransferStatusProps) {
   const reviewProgress =
     participantCount > 0 ? (doneCount / participantCount) * 100 : 0
@@ -46,6 +50,8 @@ export function ReviewTransferStatus({
           ? "All members have reviewed"
           : "Please wait until everyone has reviewed, shared items may still affect your total."}
       </p>
+
+      {action}
     </div>
   )
 }
