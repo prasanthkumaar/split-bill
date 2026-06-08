@@ -129,6 +129,12 @@ export const setPaid = mutation({
       throw new Error("Bill not found")
     }
 
+    // Payments only exist within the share phase. Reject "editing" so a crafted
+    // call can't skip sharing and drive the bill into the payment state machine.
+    if (bill.status === "editing") {
+      throw new Error("Bill must be shared before payments can be updated")
+    }
+
     const participant = await ctx.db.get(args.participantId)
     if (!participant || participant.billId !== args.billId) {
       throw new Error("Participant not found")
@@ -179,7 +185,7 @@ export const setPaid = mutation({
         (entry) => entry.paidAt !== null && entry.paidAt !== undefined
       )
 
-    if (allGuestsPaid && bill.status !== "settled") {
+    if (allGuestsPaid && bill.status === "shared") {
       await ctx.db.patch(args.billId, { status: "settled" })
     } else if (!allGuestsPaid && bill.status === "settled") {
       await ctx.db.patch(args.billId, { status: "shared" })
