@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { nanoid } from "./utils/nanoid"
 import { assertBillOwner } from "./utils/access"
+import { getOwnerParticipantName } from "./utils/ownerName"
 import { BILL_STATUSES } from "./schema"
 
 export const list = query({
@@ -21,11 +22,12 @@ export const create = mutation({
   args: {
     name: v.string(),
     imageId: v.optional(v.id("_storage")),
+    ownerName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
-    return await ctx.db.insert("bills", {
+    const billId = await ctx.db.insert("bills", {
       ownerId: identity.subject,
       name: args.name,
       imageId: args.imageId,
@@ -35,6 +37,13 @@ export const create = mutation({
       status: "editing",
       createdAt: Date.now(),
     })
+    await ctx.db.insert("friends", {
+      billId,
+      name: getOwnerParticipantName(identity, args.ownerName),
+      role: "owner",
+      userId: identity.subject,
+    })
+    return billId
   },
 })
 

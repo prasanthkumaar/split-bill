@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth, useClerk } from "@clerk/nextjs"
+import { useAuth, useClerk, useUser } from "@clerk/nextjs"
 import { useQuery, useMutation } from "convex/react"
 import { ChevronDown } from "lucide-react"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
+import { getClerkDisplayName } from "@/lib/clerk-display-name"
 import { Button } from "@workspace/ui/components/button"
 import { useMediaQuery } from "@workspace/ui/hooks/use-media-query"
 import { IdentityDialog } from "./_components/identity-dialog"
@@ -28,6 +29,7 @@ type DrawerItem = {
 
 export function ShareSession({ shareId }: ShareSessionProps) {
   const { isLoaded, userId } = useAuth()
+  const { isLoaded: isUserLoaded, user } = useUser()
   const clerk = useClerk()
   const data = useQuery(api.sharing.getShareSession, { shareId })
   const prepareShareSession = useMutation(api.sharing.prepareShareSession)
@@ -61,6 +63,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
       data === undefined ||
       data === null ||
       !isLoaded ||
+      !isUserLoaded ||
       preparedShareId === shareId
     ) {
       return
@@ -68,7 +71,7 @@ export function ShareSession({ shareId }: ShareSessionProps) {
 
     let cancelled = false
 
-    prepareShareSession({ shareId })
+    prepareShareSession({ ownerName: getClerkDisplayName(user), shareId })
       .then((result) => {
         if (cancelled) {
           return
@@ -94,7 +97,15 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     return () => {
       cancelled = true
     }
-  }, [data, isLoaded, prepareShareSession, preparedShareId, shareId])
+  }, [
+    data,
+    isLoaded,
+    isUserLoaded,
+    prepareShareSession,
+    preparedShareId,
+    shareId,
+    user,
+  ])
 
   if (data === null) {
     return (
@@ -104,7 +115,12 @@ export function ShareSession({ shareId }: ShareSessionProps) {
     )
   }
 
-  if (data === undefined || !isLoaded || preparedShareId !== shareId) {
+  if (
+    data === undefined ||
+    !isLoaded ||
+    !isUserLoaded ||
+    preparedShareId !== shareId
+  ) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
@@ -466,13 +482,6 @@ function getParticipantOptions(
 
   return participants.map((participant) => {
     const duplicateCount = counts.get(participant.name) ?? 0
-
-    if (participant.role === "owner") {
-      return {
-        ...participant,
-        label: `${participant.name} (owner)`,
-      }
-    }
 
     if (duplicateCount > 1) {
       const nextIndex = (nextIndexByName.get(participant.name) ?? 0) + 1

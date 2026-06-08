@@ -1,8 +1,10 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from "convex/server"
+import { v } from "convex/values"
 
-export const BILL_STATUSES = ["editing", "shared", "settled"] as const;
-export type BillStatus = (typeof BILL_STATUSES)[number];
+export const BILL_STATUSES = ["editing", "shared", "settled"] as const
+export type BillStatus = (typeof BILL_STATUSES)[number]
+export const PARTICIPANT_ROLES = ["owner", "guest"] as const
+export type ParticipantRole = (typeof PARTICIPANT_ROLES)[number]
 
 export default defineSchema({
   bills: defineTable({
@@ -12,9 +14,7 @@ export default defineSchema({
     tax: v.number(),
     serviceCharge: v.number(),
     shareId: v.string(),
-    status: v.union(
-      ...BILL_STATUSES.map((s) => v.literal(s))
-    ),
+    status: v.union(...BILL_STATUSES.map((s) => v.literal(s))),
     createdAt: v.number(),
   })
     .index("by_owner", ["ownerId"])
@@ -30,6 +30,9 @@ export default defineSchema({
   friends: defineTable({
     billId: v.id("bills"),
     name: v.string(),
+    role: v.optional(
+      v.union(...PARTICIPANT_ROLES.map((role) => v.literal(role)))
+    ),
     userId: v.optional(v.string()),
     doneAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
@@ -45,4 +48,4 @@ export default defineSchema({
     .index("by_friend", ["friendId"])
     .index("by_lineItem", ["lineItemId"])
     .index("by_friend_item_unit", ["friendId", "lineItemId", "unitIndex"]),
-});
+})

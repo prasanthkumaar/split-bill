@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test"
 
 const TEST_EMAIL = "test+clerk_test@example.com"
 const TEST_OTP = "424242"
+const TEST_OWNER_NAME = "Test"
 
 async function login(page: Page) {
   await page.goto("/")
@@ -72,7 +73,7 @@ async function openGuestPage(browser: Browser, shareUrl: string) {
   const context = await browser.newContext()
   const page = await context.newPage()
   await page.goto(shareUrl)
-  await expect(page.getByText("Who are you?")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText("Review your share")).toBeVisible({ timeout: 10_000 })
   return { context, page }
 }
 
@@ -107,7 +108,7 @@ test("guest done state persists across refresh and does not block tagging", asyn
     await expect(guestPage.getByTestId("done-toggle")).toHaveText("Reviewed")
 
     await guestPage.reload()
-    await expect(guestPage.getByText("Who are you?")).toBeVisible({
+    await expect(guestPage.getByText("Review your share")).toBeVisible({
       timeout: 10_000,
     })
     await guestPage.getByRole("button", { name: "Bob" }).click()
@@ -141,7 +142,7 @@ test("owner can mark done without affecting owner entry", async ({
   await expect(page.getByText("Summary")).toBeVisible({ timeout: 10_000 })
   await expect(page.getByText("0 of 2 reviewed")).toBeVisible()
   await expect(page.getByTestId("current-participant-trigger")).toHaveText(
-    "Owner"
+    TEST_OWNER_NAME
   )
   await expect(page.getByTestId("done-toggle")).toHaveText("I've reviewed")
   await expect(
@@ -161,12 +162,13 @@ test("owner can mark done without affecting owner entry", async ({
 
   try {
     await guestPage.goto(shareUrl)
-    await expect(guestPage.getByText("Who are you?")).toBeVisible({
+    await expect(guestPage.getByText("Review your share")).toBeVisible({
       timeout: 10_000,
     })
     await guestPage.getByRole("button", { name: "Bob" }).click()
     await guestPage.getByTestId("done-toggle").click()
-    await expect(guestPage.getByText("2 of 2 reviewed")).toBeVisible()
+    // At full review the progress box becomes the pay box, so the
+    // "N of N reviewed" line is replaced by the "All members have reviewed" hub.
     await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
   } finally {
     await guestContext.close()

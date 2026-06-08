@@ -7,6 +7,7 @@ import {
   type DatabaseReader,
   type MutationCtx,
 } from "./_generated/server"
+import { getOwnerParticipantName } from "./utils/ownerName"
 
 export const getShareSession = query({
   args: { shareId: v.string() },
@@ -38,10 +39,7 @@ export const getShareSession = query({
       .map((participant) => ({
         id: participant._id,
         name: participant.name,
-        role:
-          participant.userId === bill.ownerId
-            ? ("owner" as const)
-            : ("guest" as const),
+        role: getParticipantRole(participant, bill.ownerId),
         doneAt: participant.doneAt ?? null,
         paidAt: participant.paidAt ?? null,
       }))
@@ -253,7 +251,7 @@ export const applyBulkEdit = mutation({
 })
 
 export const prepareShareSession = mutation({
-  args: { shareId: v.string() },
+  args: { ownerName: v.optional(v.string()), shareId: v.string() },
   handler: async (ctx, args) => {
     const bill = await getBillByShareId(ctx.db, args.shareId)
     if (!bill) {
@@ -261,11 +259,16 @@ export const prepareShareSession = mutation({
     }
 
     const identity = await ctx.auth.getUserIdentity()
-    const ownerParticipantId = await ensureOwnerParticipant(ctx, bill, identity)
+    const ownerIdentity = identity?.subject === bill.ownerId ? identity : null
+    const ownerParticipantId = await ensureOwnerParticipant(
+      ctx,
+      bill,
+      ownerIdentity,
+      args.ownerName
+    )
 
     return {
-      currentParticipantId:
-        identity?.subject === bill.ownerId ? ownerParticipantId : null,
+      currentParticipantId: ownerIdentity ? ownerParticipantId : null,
     }
   },
 })
@@ -334,7 +337,8 @@ async function getBillByShareId(db: DatabaseReader, shareId: string) {
 async function ensureOwnerParticipant(
   ctx: MutationCtx,
   bill: Doc<"bills">,
-  identity: UserIdentity | null
+  ownerIdentity: UserIdentity | null,
+  ownerNameFromClient?: string
 ): Promise<Id<"friends">> {
   const participants = await ctx.db
     .query("friends")
@@ -344,11 +348,23 @@ async function ensureOwnerParticipant(
   const existingOwner = participants.find(
     (participant) => participant.userId === bill.ownerId
   )
-  const ownerName = getOwnerParticipantName(identity)
+  const ownerName = ownerIdentity
+    ? getOwnerParticipantName(ownerIdentity, ownerNameFromClient)
+    : null
 
   if (existingOwner) {
-    if (existingOwner.name !== ownerName) {
-      await ctx.db.patch(existingOwner._id, { name: ownerName })
+    const updates: Partial<Pick<Doc<"friends">, "name" | "role">> = {}
+
+    if (ownerName !== null && existingOwner.name !== ownerName) {
+      updates.name = ownerName
+    }
+
+    if (existingOwner.role !== "owner") {
+      updates.role = "owner"
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(existingOwner._id, updates)
     }
 
     return existingOwner._id
@@ -356,28 +372,15 @@ async function ensureOwnerParticipant(
 
   return await ctx.db.insert("friends", {
     billId: bill._id,
-    name: ownerName,
+    name: ownerName ?? "Owner",
+    role: "owner",
     userId: bill.ownerId,
   })
 }
 
-function getOwnerParticipantName(identity: UserIdentity | null) {
-  if (!identity) {
-    return "Owner"
-  }
-
-  const fullName = [identity.givenName, identity.familyName]
-    .filter(Boolean)
-    .join(" ")
-    .trim()
-
+function getParticipantRole(participant: Doc<"friends">, ownerId: string) {
   return (
-    identity.name?.trim() ||
-    fullName ||
-    identity.preferredUsername?.trim() ||
-    identity.nickname?.trim() ||
-    identity.email?.split("@")[0]?.trim() ||
-    "Owner"
+    participant.role ?? (participant.userId === ownerId ? "owner" : "guest")
   )
 }
 

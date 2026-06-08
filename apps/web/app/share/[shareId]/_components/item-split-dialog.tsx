@@ -1,4 +1,5 @@
 import type { Id } from "@convex/_generated/dataModel"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { SelectionIcon } from "./selection-icon"
 import { ResponsiveDrawerDialog } from "./responsive-drawer-dialog"
@@ -40,11 +41,7 @@ export function ItemSplitDialog({
       desktopMode="drawer"
       footer={
         <>
-          <Button
-            size="lg"
-            className="h-12 w-full text-base"
-            onClick={onSave}
-          >
+          <Button size="lg" className="h-12 w-full text-base" onClick={onSave}>
             Save
           </Button>
           <Button
@@ -76,7 +73,14 @@ export function ItemSplitDialog({
                 }
               }}
             >
-              <span className="text-base font-medium">{participant.name}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-base font-medium">
+                  {participant.name}
+                </span>
+                {participant.role === "owner" ? (
+                  <Badge variant="secondary">Owner</Badge>
+                ) : null}
+              </span>
               <SelectionIcon selected={isSelected} />
             </div>
           )
