@@ -211,6 +211,12 @@ export const applyBulkEdit = mutation({
       throw new Error("Not authorised")
     }
 
+    // A settled bill's totals are final. Changing the split would silently
+    // invalidate who paid what, so require undoing a payment first.
+    if (bill.status === "settled") {
+      throw new Error("Undo a payment before changing a settled bill's split")
+    }
+
     const [lineItems, participants, claims] = await Promise.all([
       ctx.db
         .query("lineItems")
@@ -287,6 +293,17 @@ export const setClaimers = mutation({
     participantIds: v.array(v.id("friends")),
   },
   handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.billId)
+    if (!bill) {
+      throw new Error("Bill not found")
+    }
+
+    // A settled bill's totals are final. Changing the split would silently
+    // invalidate who paid what, so require undoing a payment first.
+    if (bill.status === "settled") {
+      throw new Error("Undo a payment before changing a settled bill's split")
+    }
+
     const validFriends = await ctx.db
       .query("friends")
       .withIndex("by_bill", (q) => q.eq("billId", args.billId))
