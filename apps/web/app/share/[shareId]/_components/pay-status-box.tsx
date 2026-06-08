@@ -66,7 +66,14 @@ export function PayStatusBox({
         </div>
       </div>
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={Math.round(progress)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Payment progress: ${paidCount} of ${guestCount} paid`}
+      >
         <div
           className={`h-full rounded-full transition-all ${
             settled ? "bg-emerald-500" : "bg-foreground/60"
