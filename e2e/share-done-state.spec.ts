@@ -73,7 +73,9 @@ async function openGuestPage(browser: Browser, shareUrl: string) {
   const context = await browser.newContext()
   const page = await context.newPage()
   await page.goto(shareUrl)
-  await expect(page.getByText("Review your share")).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText("Review your share")).toBeVisible({
+    timeout: 10_000,
+  })
   return { context, page }
 }
 
@@ -153,8 +155,10 @@ test("owner can mark done without affecting owner entry", async ({
 
   await page.getByTestId("done-toggle").click()
   await expect(page.getByText("1 of 2 reviewed")).toBeVisible()
+  await expect(page.getByTestId("done-toggle")).toHaveText("Reviewed")
+  // The owner row shows the Owner badge, which trumps review/paid status.
   await expect(page.getByTestId("review-participant").first()).toContainText(
-    "Reviewed"
+    "Owner"
   )
 
   const guestContext = await browser.newContext()
@@ -167,9 +171,9 @@ test("owner can mark done without affecting owner entry", async ({
     })
     await guestPage.getByRole("button", { name: "Bob" }).click()
     await guestPage.getByTestId("done-toggle").click()
-    // At full review the progress box becomes the pay box, so the
-    // "N of N reviewed" line is replaced by the "All members have reviewed" hub.
-    await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
+    // At full review the progress box becomes the pay card, so the
+    // "N of N reviewed" line is replaced by the guest's "Your share" pay card.
+    await expect(guestPage.getByText("Your share")).toBeVisible()
   } finally {
     await guestContext.close()
   }
@@ -198,12 +202,14 @@ test("guest pays to settle the bill while the owner cannot pay", async ({
     )
 
     // The owner is owed and never sees a pay action.
-    await expect(page.getByText("All members have reviewed")).toBeVisible()
+    await expect(page.getByText("Owed to you")).toBeVisible()
     await expect(page.getByTestId("paid-toggle")).toHaveCount(0)
 
     // Guest pays, settling the bill (single guest), reflected for the owner too.
     await guestPage.getByTestId("paid-toggle").click()
-    await expect(guestPage.getByTestId("paid-toggle")).toContainText("Paid")
+    await expect(guestPage.getByTestId("paid-toggle")).toContainText(
+      "Undo payment"
+    )
     await expect(guestPage.getByText("All settled")).toBeVisible()
     await expect(
       guestPage.getByTestId("review-participant").first()
@@ -212,7 +218,7 @@ test("guest pays to settle the bill while the owner cannot pay", async ({
 
     // Paying is reversible: undoing reverts the bill out of settled.
     await guestPage.getByTestId("paid-toggle").click()
-    await expect(guestPage.getByText("All members have reviewed")).toBeVisible()
+    await expect(guestPage.getByText("Your share")).toBeVisible()
     await expect(
       guestPage.getByTestId("review-participant").first()
     ).toContainText("Unpaid")

@@ -1,5 +1,5 @@
 import type { Id } from "@convex/_generated/dataModel"
-import { CheckCircle2, Circle, Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
@@ -74,14 +74,30 @@ export function ReviewStatusCard({
 
   const yourShare = splitByParticipantId.get(currentParticipant.id)?.total ?? 0
 
+  const guests = participants.filter(
+    (participant) => participant.role === "guest"
+  )
+  const guestCount = guests.length
+  const paidCount = guests.filter(
+    (participant) => participant.paidAt !== null
+  ).length
+  const owedToOwner = guests.reduce(
+    (sum, participant) =>
+      sum + (splitByParticipantId.get(participant.id)?.total ?? 0),
+    0
+  )
+
   return (
     <section className="space-y-6 md:pr-4">
       {allReviewed ? (
         <PayStatusBox
           role={currentParticipant.role}
           yourShare={yourShare}
+          owedToOwner={owedToOwner}
           paid={currentParticipant.paidAt !== null}
           settled={settled}
+          paidCount={paidCount}
+          guestCount={guestCount}
           isToggling={isTogglingPaid}
           onTogglePaid={onTogglePaid}
         />
@@ -223,36 +239,32 @@ type StatusBadgeProps = {
   paid: boolean
 }
 
-// In the review phase everyone shows Reviewed/Pending. Once everyone has
-// reviewed, guests show Paid/Unpaid; the owner is owed, so shows no paid badge.
+// The Owner badge trumps status: owners only ever show "Owner". Guests show
+// Reviewed/Pending in the review phase, then Paid/Unpaid once everyone has
+// reviewed. Done states are green, waiting states are amber — no icons.
 function StatusBadge({ allReviewed, role, reviewed, paid }: StatusBadgeProps) {
-  if (allReviewed) {
-    if (role === "owner") {
-      return null
-    }
-
-    return paid ? (
-      <Badge className="gap-1 border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-        <CheckCircle2 className="size-3" />
-        Paid
-      </Badge>
-    ) : (
-      <Badge variant="outline" className="gap-1">
-        <Circle className="size-3" />
-        Unpaid
-      </Badge>
-    )
+  if (role === "owner") {
+    return <Badge variant="secondary">Owner</Badge>
   }
 
-  return reviewed ? (
-    <Badge variant="secondary" className="gap-1">
-      <CheckCircle2 className="size-3" />
-      Reviewed
-    </Badge>
+  const done = allReviewed ? paid : reviewed
+  const label = allReviewed
+    ? paid
+      ? "Paid"
+      : "Unpaid"
+    : reviewed
+      ? "Reviewed"
+      : "Pending"
+
+  return done ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+      <span className="size-1.5 rounded-full bg-emerald-500" />
+      {label}
+    </span>
   ) : (
-    <Badge variant="outline" className="gap-1">
-      <Circle className="size-3" />
-      Pending
-    </Badge>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+      <span className="size-1.5 rounded-full bg-amber-500" />
+      {label}
+    </span>
   )
 }

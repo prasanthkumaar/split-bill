@@ -1,69 +1,78 @@
-import { CheckCircle2, CreditCard, PartyPopper } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 
 type PayStatusBoxProps = {
   role: "owner" | "guest"
   yourShare: number
+  owedToOwner: number
   paid: boolean
   settled: boolean
+  paidCount: number
+  guestCount: number
   isToggling: boolean
   onTogglePaid: () => void
 }
 
-// Shown once everyone has reviewed: the review box becomes the pay box, with the
-// amount to pay front and centre. The owner is owed, so they only see the
-// amount; guests get the reversible "I've paid" action.
+// Shown once everyone has reviewed. Pay and settled share one stable card:
+// main text + subtext on the left, the amount on the right, a progress bar, then
+// the action. Settled keeps the exact same layout — only the subtext, colour and
+// progress fill change. The owner is owed and never pays.
 export function PayStatusBox({
   role,
   yourShare,
+  owedToOwner,
   paid,
   settled,
+  paidCount,
+  guestCount,
   isToggling,
   onTogglePaid,
 }: PayStatusBoxProps) {
-  const title = settled ? "All settled" : "All members have reviewed"
-  const subtitle = settled
-    ? "Everyone has paid their share"
-    : role === "owner"
-      ? "Here's your share"
-      : "You're clear to settle up"
+  const isOwner = role === "owner"
+  const mainText = isOwner ? "Owed to you" : "Your share"
+  const amount = isOwner ? owedToOwner : yourShare
+  const subtext = settled
+    ? "All settled · everyone has paid"
+    : isOwner
+      ? `${paidCount} of ${guestCount} have paid you`
+      : `${paidCount} of ${guestCount} paid`
+  const progress =
+    settled || guestCount === 0 ? 100 : (paidCount / guestCount) * 100
 
   return (
     <div
-      className={`space-y-3 rounded-lg border px-4 py-4 ${
-        settled
-          ? "border-emerald-500/30 bg-emerald-500/10"
-          : "border-primary/30 bg-primary/10"
+      className={`space-y-4 rounded-xl border p-5 ${
+        settled ? "border-emerald-500/30 bg-emerald-500/[0.06]" : "bg-card"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
+          <div className="text-sm font-medium">{mainText}</div>
           <div
-            className={`flex items-center gap-1.5 text-sm font-semibold ${
+            className={`text-xs ${
               settled
                 ? "text-emerald-600 dark:text-emerald-400"
-                : "text-primary"
+                : "text-muted-foreground"
             }`}
           >
-            {settled ? (
-              <PartyPopper className="size-4" />
-            ) : (
-              <CheckCircle2 className="size-4" />
-            )}
-            {title}
-          </div>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-        <div className="text-right">
-          <div className="text-[11px] text-muted-foreground">Your share</div>
-          <div
-            className={`text-2xl font-bold tabular-nums ${
-              settled ? "" : "text-primary"
-            }`}
-          >
-            ${yourShare.toFixed(2)}
+            {subtext}
           </div>
         </div>
+        <div
+          className={`text-3xl font-bold tabular-nums ${
+            settled ? "text-emerald-700 dark:text-emerald-400" : ""
+          }`}
+        >
+          ${amount.toFixed(2)}
+        </div>
+      </div>
+
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${
+            settled ? "bg-emerald-500" : "bg-foreground/60"
+          }`}
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
       {role === "guest" ? (
@@ -76,17 +85,7 @@ export function PayStatusBox({
           onClick={onTogglePaid}
           disabled={isToggling}
         >
-          {paid ? (
-            <>
-              <CheckCircle2 className="size-4" />
-              Paid
-            </>
-          ) : (
-            <>
-              <CreditCard className="size-4" />
-              I&apos;ve paid
-            </>
-          )}
+          {paid ? "Undo payment" : "I've paid"}
         </Button>
       ) : null}
     </div>
