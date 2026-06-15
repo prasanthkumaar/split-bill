@@ -1,0 +1,38 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Receipt upload / OCR
+        - Bill editing
+        - Share link / guest flow
+        - Auth / sign-in
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Browser / OS (optional)
+      placeholder: e.g. Safari 18 on iOS 18
