@@ -113,6 +113,95 @@ test("normalizes a MIME-less mobile receipt before parsing", async ({
   expect(receivedMimeType).toBe("image/jpeg")
 })
 
+test("keeps transparent receipt backgrounds light in the JPEG OCR payload", async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+
+  await signInAndCreateBill(page, "Transparent Receipt Test")
+
+  let receivedImageBase64: string | null = null
+  let receivedMimeType: string | null = null
+  await page.route("**/api/parse-receipt", async (route) => {
+    const body = JSON.parse(route.request().postData() ?? "{}") as {
+      imageBase64?: string
+      mimeType?: string
+    }
+    receivedImageBase64 = body.imageBase64 ?? null
+    receivedMimeType = body.mimeType ?? null
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ name: "Transparent Test Item", quantity: 1, unitPrice: 5 }],
+        tax: 0,
+        serviceCharge: 0,
+      }),
+    })
+  })
+
+  await page
+    .locator('input[type="file"]')
+    .evaluate<void, HTMLInputElement>(async (input) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = 64
+      canvas.height = 64
+
+      const context = canvas.getContext("2d")
+      if (!context) {
+        throw new Error("Failed to build transparent test image")
+      }
+
+      context.fillStyle = "#111111"
+      context.fillRect(20, 20, 24, 24)
+
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/png")
+      })
+      if (!pngBlob) {
+        throw new Error("Failed to create transparent test image")
+      }
+
+      const file = new File([pngBlob], "transparent-receipt.png", {
+        type: "image/png",
+      })
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(file)
+      input.files = dataTransfer.files
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+
+  await expect(
+    page.locator('input[value="Transparent Test Item"]')
+  ).toBeVisible({ timeout: 20_000 })
+  expect(receivedMimeType).toBe("image/jpeg")
+  expect(receivedImageBase64).not.toBeNull()
+
+  const sampledPixels = await page.evaluate(async (imageBase64) => {
+    const image = new Image()
+    image.src = `data:image/jpeg;base64,${imageBase64}`
+    await image.decode()
+
+    const canvas = document.createElement("canvas")
+    canvas.width = image.naturalWidth
+    canvas.height = image.naturalHeight
+    const context = canvas.getContext("2d")
+    if (!context) {
+      throw new Error("Failed to inspect parsed receipt image")
+    }
+
+    context.drawImage(image, 0, 0)
+    return {
+      background: Array.from(context.getImageData(2, 2, 1, 1).data),
+      receiptInk: Array.from(context.getImageData(32, 32, 1, 1).data),
+    }
+  }, receivedImageBase64!)
+
+  expect(Math.min(...sampledPixels.background.slice(0, 3))).toBeGreaterThan(240)
+  expect(Math.max(...sampledPixels.receiptInk.slice(0, 3))).toBeLessThan(80)
+})
+
 test("compresses a large JPEG below the parse request byte ceiling", async ({
   page,
 }) => {
