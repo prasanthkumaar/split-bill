@@ -42,7 +42,7 @@ async function signInAndCreateBill(page: Page, billName: string) {
   })
 }
 
-test("Receipt upload normalizes unsupported mobile image types", async ({
+test("normalizes a MIME-less mobile receipt before parsing", async ({
   page,
 }) => {
   test.setTimeout(120_000)
@@ -111,6 +111,141 @@ test("Receipt upload normalizes unsupported mobile image types", async ({
     timeout: 10_000,
   })
   expect(receivedMimeType).toBe("image/jpeg")
+})
+
+test("compresses a large JPEG below the parse request byte ceiling", async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+
+  await signInAndCreateBill(page, "Receipt Compression Test")
+
+  let receivedImageBytes: number | null = null
+  let receivedMimeType: string | null = null
+  await page.route("**/api/parse-receipt", async (route) => {
+    const body = JSON.parse(route.request().postData() ?? "{}") as {
+      imageBase64?: string
+      mimeType?: string
+    }
+    receivedImageBytes = Buffer.from(body.imageBase64 ?? "", "base64").length
+    receivedMimeType = body.mimeType ?? null
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ name: "Mobile Test Item", quantity: 1, unitPrice: 12.34 }],
+        tax: 0,
+        serviceCharge: 0,
+      }),
+    })
+  })
+
+  const originalImageBytes = await page
+    .locator('input[type="file"]')
+    .evaluate<number, HTMLInputElement>(async (input) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = 2400
+      canvas.height = 2400
+
+      const context = canvas.getContext("2d")
+      if (!context) {
+        throw new Error("Failed to build test image")
+      }
+
+      const pixels = context.createImageData(canvas.width, canvas.height)
+      let seed = 0x12345678
+      for (let index = 0; index < pixels.data.length; index += 4) {
+        seed = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+        pixels.data[index] = seed & 255
+        pixels.data[index + 1] = (seed >>> 8) & 255
+        pixels.data[index + 2] = (seed >>> 16) & 255
+        pixels.data[index + 3] = 255
+      }
+      context.putImageData(pixels, 0, 0)
+
+      const jpegBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", 0.92)
+      })
+
+      if (!jpegBlob) {
+        throw new Error("Failed to create test blob")
+      }
+
+      const file = new File([jpegBlob], "large-receipt.jpg", {
+        type: "image/jpeg",
+      })
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(file)
+      input.files = dataTransfer.files
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+
+      return file.size
+    })
+
+  expect(originalImageBytes).toBeGreaterThan(3_000_000)
+  expect(originalImageBytes).toBeLessThanOrEqual(10 * 1024 * 1024)
+  await expect(page.getByText("Processing receipt...")).toBeVisible({
+    timeout: 5_000,
+  })
+  await expect(page.getByText("Processing receipt...")).not.toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.locator('input[value="Mobile Test Item"]')).toBeVisible({
+    timeout: 10_000,
+  })
+  expect(receivedImageBytes).not.toBeNull()
+  expect(receivedImageBytes!).toBeLessThanOrEqual(3_000_000)
+  expect(receivedMimeType).toBe("image/jpeg")
+})
+
+test("shows a toast when a receipt exceeds the input size limit", async ({
+  page,
+}) => {
+  await signInAndCreateBill(page, "Receipt Size Error Test")
+
+  await page
+    .locator('input[type="file"]')
+    .evaluate<void, HTMLInputElement>((input) => {
+      const oversizedFile = new File(
+        [new Uint8Array(10 * 1024 * 1024 + 1)],
+        "oversized-receipt.jpg",
+        { type: "image/jpeg" }
+      )
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(oversizedFile)
+      input.files = dataTransfer.files
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+
+  await expect(
+    page.getByText("Receipt images must be smaller than 10 MB.")
+  ).toBeVisible()
+  await expect(page.getByText("Processing receipt...")).not.toBeVisible()
+})
+
+test("shows a toast when receipt processing fails", async ({ page }) => {
+  test.setTimeout(120_000)
+
+  await signInAndCreateBill(page, "Receipt Processing Error Test")
+  await page.route("**/api/parse-receipt", async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Test receipt parse failure" }),
+    })
+  })
+
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles("e2e/fixtures/test-receipt.png")
+
+  await expect(
+    page.getByText("Couldn’t process this receipt. Please upload it again.")
+  ).toBeVisible({ timeout: 20_000 })
+  await expect(
+    page.getByRole("button", { name: "Re-upload receipt" })
+  ).toBeEnabled()
 })
 
 test("Receipt OCR upload", async ({ page }) => {

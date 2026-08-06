@@ -1,21 +1,17 @@
 import { useMutation as useConvexMutation } from "convex/react"
 import { useMutation } from "@tanstack/react-query"
+import imageCompression from "browser-image-compression"
+import { toast } from "sonner"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import {
-  parseReceiptResultSchema,
-  type ParseReceiptResult,
-} from "../schema"
+import { parseReceiptResultSchema, type ParseReceiptResult } from "../schema"
 
-const SUPPORTED_RECEIPT_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-])
 const NORMALIZED_RECEIPT_MIME_TYPE = "image/jpeg"
+const MAX_PREPARED_RECEIPT_BYTES = 3_000_000
 const MAX_RECEIPT_DIMENSION = 2048
 const JPEG_QUALITY = 0.85
+const RECEIPT_PROCESSING_ERROR_MESSAGE =
+  "Couldn’t process this receipt. Please upload it again."
 
 export function useUploadReceipt(billId: Id<"bills">) {
   const generateUploadUrl = useConvexMutation(api.bills.generateUploadUrl)
@@ -24,18 +20,18 @@ export function useUploadReceipt(billId: Id<"bills">) {
 
   return useMutation({
     mutationFn: async (file: File) => {
-      const normalizedFile = await normalizeReceiptFile(file)
+      const preparedFile = await prepareReceiptFile(file)
       const uploadUrl = await generateUploadUrl()
       const res = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": normalizedFile.type },
-        body: normalizedFile,
+        headers: { "Content-Type": preparedFile.type },
+        body: preparedFile,
       })
       const { storageId } = await res.json()
       await updateBill({ id: billId, imageId: storageId })
 
-      const imageBase64 = await toBase64(normalizedFile)
-      const parsed = await requestReceiptParse(imageBase64, normalizedFile.type)
+      const imageBase64 = await toBase64(preparedFile)
+      const parsed = await requestReceiptParse(imageBase64, preparedFile.type)
 
       if (parsed.items.length) {
         await replaceAllItems({ billId, items: parsed.items })
@@ -47,6 +43,9 @@ export function useUploadReceipt(billId: Id<"bills">) {
           serviceCharge: parsed.serviceCharge,
         })
       }
+    },
+    onError: () => {
+      toast.error(RECEIPT_PROCESSING_ERROR_MESSAGE)
     },
   })
 }
@@ -60,87 +59,34 @@ function toBase64(file: File): Promise<string> {
   })
 }
 
-async function normalizeReceiptFile(file: File): Promise<File> {
-  if (SUPPORTED_RECEIPT_MIME_TYPES.has(file.type)) {
-    return file
+async function prepareReceiptFile(file: File): Promise<File> {
+  const compressionInputFile = ensureImageMimeType(file)
+  const compressedFile = await imageCompression(compressionInputFile, {
+    maxSizeMB: MAX_PREPARED_RECEIPT_BYTES / (1024 * 1024),
+    maxWidthOrHeight: MAX_RECEIPT_DIMENSION,
+    fileType: NORMALIZED_RECEIPT_MIME_TYPE,
+    initialQuality: JPEG_QUALITY,
+    useWebWorker: true,
+  })
+
+  if (compressedFile.size > MAX_PREPARED_RECEIPT_BYTES) {
+    throw new Error("Could not reduce the receipt image enough")
   }
 
-  const image = await loadImage(file)
-  const { width, height } = getNormalizedDimensions(
-    image.naturalWidth,
-    image.naturalHeight
-  )
-  const canvas = document.createElement("canvas")
-  canvas.width = width
-  canvas.height = height
-
-  const context = canvas.getContext("2d")
-  if (!context) {
-    throw new Error("Failed to prepare receipt image")
-  }
-
-  context.fillStyle = "#ffffff"
-  context.fillRect(0, 0, width, height)
-  context.drawImage(image, 0, 0, width, height)
-
-  const blob = await canvasToBlob(
-    canvas,
-    NORMALIZED_RECEIPT_MIME_TYPE,
-    JPEG_QUALITY
-  )
-
-  return new File([blob], toJpegFilename(file.name), {
+  return new File([compressedFile], toJpegFilename(file.name), {
     type: NORMALIZED_RECEIPT_MIME_TYPE,
     lastModified: file.lastModified,
   })
 }
 
-function loadImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file)
-    const image = new Image()
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      resolve(image)
-    }
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error("Failed to read receipt image"))
-    }
-    image.src = objectUrl
-  })
-}
-
-function getNormalizedDimensions(width: number, height: number) {
-  const longestSide = Math.max(width, height)
-  if (longestSide <= MAX_RECEIPT_DIMENSION) {
-    return { width, height }
+function ensureImageMimeType(file: File): File {
+  if (file.type.startsWith("image/")) {
+    return file
   }
 
-  const scale = MAX_RECEIPT_DIMENSION / longestSide
-  return {
-    width: Math.max(1, Math.round(width * scale)),
-    height: Math.max(1, Math.round(height * scale)),
-  }
-}
-
-function canvasToBlob(
-  canvas: HTMLCanvasElement,
-  mimeType: string,
-  quality: number
-): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("Failed to convert receipt image"))
-          return
-        }
-        resolve(blob)
-      },
-      mimeType,
-      quality
-    )
+  return new File([file], file.name, {
+    type: NORMALIZED_RECEIPT_MIME_TYPE,
+    lastModified: file.lastModified,
   })
 }
 
