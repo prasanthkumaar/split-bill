@@ -202,7 +202,7 @@ test("keeps transparent receipt backgrounds light in the JPEG OCR payload", asyn
   expect(Math.max(...sampledPixels.receiptInk.slice(0, 3))).toBeLessThan(80)
 })
 
-test("compresses a large JPEG below the parse request byte ceiling", async ({
+test("compresses a JPEG larger than 10 MB below the parse request byte ceiling", async ({
   page,
 }) => {
   test.setTimeout(120_000)
@@ -234,8 +234,8 @@ test("compresses a large JPEG below the parse request byte ceiling", async ({
     .locator('input[type="file"]')
     .evaluate<number, HTMLInputElement>(async (input) => {
       const canvas = document.createElement("canvas")
-      canvas.width = 2400
-      canvas.height = 2400
+      canvas.width = 3200
+      canvas.height = 3200
 
       const context = canvas.getContext("2d")
       if (!context) {
@@ -254,7 +254,7 @@ test("compresses a large JPEG below the parse request byte ceiling", async ({
       context.putImageData(pixels, 0, 0)
 
       const jpegBlob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, "image/jpeg", 0.92)
+        canvas.toBlob(resolve, "image/jpeg", 1)
       })
 
       if (!jpegBlob) {
@@ -272,8 +272,7 @@ test("compresses a large JPEG below the parse request byte ceiling", async ({
       return file.size
     })
 
-  expect(originalImageBytes).toBeGreaterThan(3_000_000)
-  expect(originalImageBytes).toBeLessThanOrEqual(10 * 1024 * 1024)
+  expect(originalImageBytes).toBeGreaterThan(10 * 1024 * 1024)
   await expect(page.getByText("Processing receipt...")).toBeVisible({
     timeout: 5_000,
   })
@@ -288,29 +287,29 @@ test("compresses a large JPEG below the parse request byte ceiling", async ({
   expect(receivedMimeType).toBe("image/jpeg")
 })
 
-test("shows a toast when a receipt exceeds the input size limit", async ({
-  page,
-}) => {
-  await signInAndCreateBill(page, "Receipt Size Error Test")
+test("shows a toast when receipt compression fails", async ({ page }) => {
+  await signInAndCreateBill(page, "Receipt Compression Error Test")
 
   await page
     .locator('input[type="file"]')
     .evaluate<void, HTMLInputElement>((input) => {
-      const oversizedFile = new File(
-        [new Uint8Array(10 * 1024 * 1024 + 1)],
-        "oversized-receipt.jpg",
+      const corruptImage = new File(
+        [new TextEncoder().encode("not a decodable image")],
+        "corrupt-receipt.jpg",
         { type: "image/jpeg" }
       )
       const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(oversizedFile)
+      dataTransfer.items.add(corruptImage)
       input.files = dataTransfer.files
       input.dispatchEvent(new Event("change", { bubbles: true }))
     })
 
   await expect(
-    page.getByText("Receipt images must be smaller than 10 MB.")
-  ).toBeVisible()
-  await expect(page.getByText("Processing receipt...")).not.toBeVisible()
+    page.getByText("Couldn’t process this receipt. Please upload it again.")
+  ).toBeVisible({ timeout: 20_000 })
+  await expect(
+    page.getByRole("button", { name: "Upload receipt photo" })
+  ).toBeEnabled()
 })
 
 test("shows a toast when receipt processing fails", async ({ page }) => {

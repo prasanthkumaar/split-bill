@@ -3,8 +3,6 @@ import Image from "next/image"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Loader2, Upload } from "lucide-react"
-import { toast } from "sonner"
-const MAX_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024
 
 type ReceiptCardProps = {
   receiptUrl?: string | null
@@ -30,12 +28,6 @@ export function ReceiptCard({
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (file) {
-              if (file.size > MAX_RECEIPT_UPLOAD_BYTES) {
-                toast.error("Receipt images must be smaller than 10 MB.")
-                event.target.value = ""
-                return
-              }
-
               onUploadReceipt(file)
             }
             event.target.value = ""
